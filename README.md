@@ -1,8 +1,8 @@
 # TherapistHelper
 
-**TheraScribe AI: Session Assistant for Therapists (MVP)**
+**Therapist Helper AI: Session Assistant for Therapists (MVP)**
 
-TheraScribe AI is a web application designed to help consultant therapists enhance client engagement by minimizing time spent on note-taking and administrative tasks. By leveraging AI, the app automates transcription, generates valuable insights, and helps prepare for future sessions, allowing therapists to focus fully on their clients.
+Therapist Helper AI is a web application designed to help consultant therapists enhance client engagement by minimizing time spent on note-taking and administrative tasks. By leveraging AI, the app automates transcription, generates valuable insights, and helps prepare for future sessions, allowing therapists to focus fully on their clients.
 
 This repository contains the source code for the Minimum Viable Product (MVP).
 
@@ -72,8 +72,8 @@ For the MVP, we are using a **Monolithic Architecture**. This approach simplifie
 
 #### 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/therascribe-ai.git
-cd therascribe-ai
+git clone https://github.com/your-username/Therapist Helper-ai.git
+cd Therapist Helper-ai
 ```
 
 #### 2. Setup Backend:
@@ -147,7 +147,7 @@ This application is designed to handle extremely sensitive **Protected Health In
 
 ## 📁 Project Structure
 ```
-therascribe-ai/
+Therapist Helper-ai/
 ├── frontend/          # Next.js React application
 ├── backend/           # FastAPI Python application  
 ├── database/          # Database migrations and schemas

@@ -1,0 +1,255 @@
+# ===========================================
+# Therapist Helper AI - .gitignore
+# ===========================================
+
+# ===== SECURITY & ENVIRONMENT =====
+# Environment variables and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# API keys and secrets
+secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# ===== FRONTEND (Next.js/React) =====
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Next.js cache
+.next/cache/
+
+# Vercel deployment
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# ===== BACKEND (Python/FastAPI) =====
+# Python virtual environment
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# ===== DATABASE =====
+# PostgreSQL
+*.sql
+*.backup
+*.dump
+*.pgbackup
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Database migration files (keep structure, ignore data)
+migrations/versions/
+alembic/versions/
+
+# ===== DEVELOPMENT TOOLS =====
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== SYSTEM FILES =====
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ===== LOGS & TEMPORARY FILES =====
+# Log files
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory
+coverage/
+*.lcov
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# ===== MEDICAL DATA & HIPAA =====
+# CRITICAL: Never commit patient data
+patient_data/
+client_data/
+medical_records/
+audio_files/
+transcripts/
+session_recordings/
+*.wav
+*.mp3
+*.mp4
+*.m4a
+*.flac
+*.aac
+
+# Backup files that might contain PHI
+*.bak
+*.backup
+*.old
+*.orig
+
+# ===== DEPLOYMENT & PRODUCTION =====
+# Docker
+.dockerignore
+Dockerfile.prod
+docker-compose.prod.yml
+
+# AWS
+.aws/
+.elasticbeanstalk/
+
+# ===== MISCELLANEOUS =====
+# Temporary folders
+tmp/
+temp/
+cache/
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Test files
+test_files/
+mock_data/
+sample_data/
+```
+
+## 🔒 关键的安全考虑：
+
+作为你的编程导师，我想特别强调.gitignore文件中的几个重要部分：
+
+### 1. **环境变量和密钥** (.env files)
+```gitignore
+.env
+.env.local
+secrets/
+*.key
+```
+**为什么重要**：这些文件包含数据库密码、API密钥等敏感信息，绝对不能提交到版本控制。
+
+### 2. **医疗数据保护** (HIPAA合规)
+```gitignore
+<code_block_to_apply_changes_from>
+```
+**为什么重要**：任何包含患者信息的文件都是PHI（Protected Health Information），必须严格保护。
+
+### 3. **构建输出和依赖** 
+```gitignore
+node_modules/
+.next/
+__pycache__/
+dist/
+```
+**为什么重要**：这些文件可以通过构建过程重新生成，不需要版本控制，而且会让仓库变得非常大。
+
+## 🤔 编程导师提问：
+
+**问题1 - 安全意识**：
+你能解释为什么在处理医疗数据的应用中，.gitignore文件比普通应用更加重要吗？如果不小心提交了包含患者信息的文件会发生什么？
+
+**问题2 - 项目结构理解**：
+看到我为前端和后端分别设置了不同的忽略规则。你能说出为什么`node_modules/`对前端重要，而`__pycache__/`对后端重要吗？
+
+**问题3 - 开发流程**：
+如果你的团队成员不小心在本地创建了一个名为`test_patient_data.json`的文件，这个.gitignore文件会保护它吗？为什么？
+
+现在请手动将这个内容添加到你的.gitignore文件中，然后告诉我你对哪个部分最感兴趣深入了解！
