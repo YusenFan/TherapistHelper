@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import MainLayout from '@/components/MainLayout'
 
 export const metadata: Metadata = {
   title: 'Therapist Helper AI',
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-inter bg-therapy-gray text-therapy-navy">
-        {children}
+        <MainLayout>{children}</MainLayout>
       </body>
     </html>
   )
