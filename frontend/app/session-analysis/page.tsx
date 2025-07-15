@@ -1,4 +1,3 @@
-import Header from '@/components/Header'
 import TranscriptPanel from '@/components/session-analysis/TranscriptPanel'
 import SummaryPanel from '@/components/session-analysis/SummaryPanel'
 import HelperPanel from '@/components/session-analysis/HelperPanel'
@@ -64,26 +63,24 @@ const mockSessionData = {
 
 export default function SessionAnalysis() {
   return (
-    <div className="min-h-screen bg-therapy-gray">
-      <Header />
-      
+    <div className="min-h-screen">
       {/* Client Sub-Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold text-therapy-navy">
+              <h1 className="text-3xl font-bold text-therapy-navy">
                 {mockSessionData.client.name}
-              </h2>
-              <p className="text-gray-600 mt-1">
+              </h1>
+              <p className="text-gray-600 mt-1 text-lg">
                 Session: {mockSessionData.client.sessionDate}
               </p>
             </div>
             <div className="flex space-x-3">
-              <button className="px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
+              <button className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
                 Export Report
               </button>
-              <button className="px-4 py-2 border border-therapy-blue text-therapy-navy rounded-lg hover:bg-therapy-blue hover:bg-opacity-10 transition-colors font-medium">
+              <button className="px-6 py-3 border border-therapy-blue text-therapy-navy rounded-lg hover:bg-therapy-blue hover:bg-opacity-10 transition-colors font-medium">
                 Save Notes
               </button>
             </div>
@@ -92,8 +89,8 @@ export default function SessionAnalysis() {
       </div>
 
       {/* Three-Column Layout */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-240px)]">
           {/* Left Column - Transcript */}
           <div className="lg:col-span-1">
             <TranscriptPanel transcript={mockSessionData.transcript} />
