@@ -8,7 +8,7 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const [isCollapsed, setIsCollapsed] = useState(true) // Collapsed by default as per design
+  const [isCollapsed, setIsCollapsed] = useState(false) // Expanded by default
 
   return (
     <div className="min-h-screen bg-therapy-gray">

@@ -421,12 +421,7 @@ export default function ClientProfile({ params }: ClientProfileProps) {
               <button className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
                 Schedule Session
               </button>
-              <button 
-                onClick={() => setActiveTab('edit')}
-                className="px-6 py-3 border border-therapy-blue text-therapy-navy rounded-lg hover:bg-therapy-blue hover:bg-opacity-10 transition-colors font-medium"
-              >
-                Edit Profile
-              </button>
+ 
             </div>
           </div>
 
@@ -503,10 +498,7 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                     <span className="text-gray-600">Last Updated</span>
                     <span className="text-therapy-navy font-medium">{formatDate(clientData.updated_at)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">UUID</span>
-                    <span className="text-therapy-navy font-medium text-xs">{clientData.uuid}</span>
-                  </div>
+                
                   <div className="flex justify-between">
                     <span className="text-gray-600">Status</span>
                     <span className="text-therapy-navy font-medium">Active</span>
@@ -517,15 +509,6 @@ export default function ClientProfile({ params }: ClientProfileProps) {
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-therapy-navy mb-4">Quick Actions</h3>
                 <div className="space-y-3">
-                  <button className="w-full px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors text-sm font-medium">
-                    Schedule Session
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('edit')}
-                    className="w-full px-4 py-2 border border-therapy-blue text-therapy-navy rounded-lg hover:bg-therapy-blue hover:bg-opacity-10 transition-colors text-sm font-medium"
-                  >
-                    Edit Profile
-                  </button>
                   <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
                     Export Data
                   </button>
