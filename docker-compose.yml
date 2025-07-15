@@ -33,6 +33,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://therapist:therapist123@postgres:5432/therapist_helper
       - ENVIRONMENT=development
+      - SECRET_KEY=dev-secret-key-change-in-production-2024
+      - ENCRYPTION_KEY=ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg=
     volumes:
       - ./backend:/app
       - backend_cache:/app/__pycache__

@@ -1,66 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-
-// Mock data - in real app this would come from API based on params.id
-const clientData = {
-  id: 1,
-  name: "John Doe",
-  age: 34,
-  gender: "Male",
-  occupation: "Software Engineer",
-  phone: "(555) 123-4567",
-  email: "john.doe@email.com",
-  emergencyContact: "Jane Doe (Wife) - (555) 987-6543",
-  insuranceProvider: "Blue Cross Blue Shield",
-  policyNumber: "BC123456789",
-  status: "Active",
-  riskLevel: "Low",
-  startDate: "March 15, 2025",
-  lastSession: "July 5, 2025",
-  totalSessions: 8,
-  photo: "JD",
-  
-  // AI-Generated Background
-  aiBackground: {
-    keyTraits: ["High achiever", "Perfectionist tendencies", "Strong family support", "Career-focused"],
-    riskFactors: ["Work-related stress", "Difficulty setting boundaries", "Mild anxiety patterns"],
-    goals: ["Improve work-life balance", "Develop stress management skills", "Strengthen family relationships"],
-    therapeuticApproach: "Cognitive Behavioral Therapy (CBT) with mindfulness techniques"
-  },
-  
-  // Session History
-  sessions: [
-    {
-      id: 8,
-      date: "July 5, 2025",
-      duration: "50 min",
-      type: "Regular Session",
-      summary: "Discussed work stress and family relationships. Client reported improved boundary-setting with manager.",
-      mood: "Improving",
-      nextGoals: ["Practice saying no to extra projects", "Schedule family time"]
-    },
-    {
-      id: 7,
-      date: "June 28, 2025", 
-      duration: "50 min",
-      type: "Regular Session",
-      summary: "Continued work on stress management techniques. Client completed homework assignments successfully.",
-      mood: "Stable",
-      nextGoals: ["Apply breathing techniques at work", "Use boundary-setting scripts"]
-    },
-    {
-      id: 6,
-      date: "June 21, 2025",
-      duration: "45 min", 
-      type: "Regular Session",
-      summary: "Introduced mindfulness exercises for workplace stress. Client engaged well with techniques.",
-      mood: "Receptive",
-      nextGoals: ["Daily 10-minute mindfulness practice", "Identify stress triggers"]
-    }
-  ]
-}
+import { apiClient, type ClientResponse, type ClientData } from '@/lib/api'
 
 interface ClientProfileProps {
   params: {
@@ -68,8 +10,211 @@ interface ClientProfileProps {
   }
 }
 
+interface FormData {
+  full_name: string
+  age: string
+  gender: string
+  custom_gender: string
+  background: string
+}
+
+interface FormErrors {
+  full_name?: string
+  age?: string
+  gender?: string
+  general?: string
+}
+
 export default function ClientProfile({ params }: ClientProfileProps) {
   const [activeTab, setActiveTab] = useState('overview')
+  const [clientData, setClientData] = useState<ClientResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Edit form state
+  const [editMode, setEditMode] = useState(false)
+  const [formData, setFormData] = useState<FormData>({
+    full_name: '',
+    age: '',
+    gender: '',
+    custom_gender: '',
+    background: ''
+  })
+  const [formErrors, setFormErrors] = useState<FormErrors>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [updateSuccess, setUpdateSuccess] = useState(false)
+
+  const maxBackgroundLength = 2400
+
+  useEffect(() => {
+    const fetchClient = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const client = await apiClient.getClient(parseInt(params.id))
+        setClientData(client)
+        
+        // Initialize form data with client data
+        setFormData({
+          full_name: client.full_name,
+          age: client.age.toString(),
+          gender: client.gender,
+          custom_gender: client.custom_gender || '',
+          background: client.background || ''
+        })
+      } catch (err) {
+        console.error('Failed to fetch client:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load client data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (params.id && !isNaN(parseInt(params.id))) {
+      fetchClient()
+    } else {
+      setError('Invalid client ID')
+      setLoading(false)
+    }
+  }, [params.id])
+
+  const genderOptions = [
+    { value: 'female', label: 'Female' },
+    { value: 'male', label: 'Male' },
+    { value: 'non-binary', label: 'Non-binary' },
+    { value: 'prefer-not-to-say', label: 'Prefer not to say' },
+    { value: 'other', label: 'Other...' }
+  ]
+
+  // Form validation
+  const validateField = (name: string, value: string) => {
+    const newErrors = { ...formErrors }
+
+    switch (name) {
+      case 'full_name':
+        if (!value.trim()) {
+          newErrors.full_name = 'Client name is required'
+        } else if (value.trim().length < 2) {
+          newErrors.full_name = 'Name must be at least 2 characters'
+        } else {
+          delete newErrors.full_name
+        }
+        break
+
+      case 'age':
+        if (!value) {
+          newErrors.age = 'Age is required'
+        } else if (isNaN(Number(value))) {
+          newErrors.age = 'Age must be a number'
+        } else if (Number(value) < 0 || Number(value) > 120) {
+          newErrors.age = 'Age must be between 0 and 120'
+        } else {
+          delete newErrors.age
+        }
+        break
+
+      case 'gender':
+        if (!value) {
+          newErrors.gender = 'Gender selection is required'
+        } else {
+          delete newErrors.gender
+        }
+        break
+
+      default:
+        break
+    }
+
+    setFormErrors(newErrors)
+  }
+
+  const handleInputChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }))
+    validateField(name, value)
+    
+    // Clear update success message when user starts editing
+    if (updateSuccess) {
+      setUpdateSuccess(false)
+    }
+  }
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
+
+    if (!formData.full_name.trim()) {
+      newErrors.full_name = 'Client name is required'
+    }
+    if (!formData.age) {
+      newErrors.age = 'Age is required'
+    } else if (isNaN(Number(formData.age)) || Number(formData.age) < 0 || Number(formData.age) > 120) {
+      newErrors.age = 'Please enter a valid age (0-120)'
+    }
+    if (!formData.gender) {
+      newErrors.gender = 'Gender selection is required'
+    }
+
+    setFormErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      setFormErrors(prev => ({ ...prev, general: 'Please complete all required fields' }))
+      return
+    }
+
+    if (!clientData) return
+
+    setIsSubmitting(true)
+    
+    try {
+      // Prepare client data for API
+      const updateData: Partial<ClientData> = {
+        full_name: formData.full_name,
+        age: parseInt(formData.age),
+        gender: formData.gender,
+        custom_gender: formData.gender === 'other' ? formData.custom_gender : undefined,
+        background: formData.background || undefined
+      }
+      
+      // Update client via API
+      const updatedClient = await apiClient.updateClient(clientData.id, updateData)
+      
+      // Update local state with new data
+      setClientData(updatedClient)
+      setUpdateSuccess(true)
+      setEditMode(false)
+      
+      // Clear any previous errors
+      setFormErrors({})
+    } catch (error) {
+      console.error('Failed to update client:', error)
+      setFormErrors({ 
+        general: error instanceof Error 
+          ? error.message 
+          : 'Failed to update client profile. Please try again.' 
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    if (!clientData) return
+    
+    // Reset form data to original values
+    setFormData({
+      full_name: clientData.full_name,
+      age: clientData.age.toString(),
+      gender: clientData.gender,
+      custom_gender: clientData.custom_gender || '',
+      background: clientData.background || ''
+    })
+    
+    setFormErrors({})
+    setEditMode(false)
+    setUpdateSuccess(false)
+  }
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: 'overview' },
@@ -109,8 +254,140 @@ export default function ClientProfile({ params }: ClientProfileProps) {
     }
   }
 
+  const getInitials = (fullName: string) => {
+    return fullName
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const formatGender = (gender: string, customGender?: string) => {
+    if (gender === 'other' && customGender) {
+      return customGender
+    }
+    return gender.charAt(0).toUpperCase() + gender.slice(1).replace('-', ' ')
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen">
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-6">
+                <Link 
+                  href="/clients"
+                  className="text-therapy-coral hover:text-therapy-coral-dark transition-colors"
+                >
+                  ← Back to Clients
+                </Link>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-300 rounded w-48"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-therapy-coral"></div>
+            <span className="ml-3 text-therapy-navy">Loading client data...</span>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen">
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-6">
+                <Link 
+                  href="/clients"
+                  className="text-therapy-coral hover:text-therapy-coral-dark transition-colors"
+                >
+                  ← Back to Clients
+                </Link>
+                <h1 className="text-3xl font-bold text-therapy-navy">Client Not Found</h1>
+              </div>
+            </div>
+          </div>
+        </div>
+        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <svg className="w-5 h-5 text-red-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 15c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <p className="text-red-800">{error}</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // Client data not found
+  if (!clientData) {
+    return (
+      <div className="min-h-screen">
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-6">
+                <Link 
+                  href="/clients"
+                  className="text-therapy-coral hover:text-therapy-coral-dark transition-colors"
+                >
+                  ← Back to Clients
+                </Link>
+                <h1 className="text-3xl font-bold text-therapy-navy">Client Not Found</h1>
+              </div>
+            </div>
+          </div>
+        </div>
+        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="text-center py-12">
+            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+            </svg>
+            <h3 className="text-xl font-semibold text-therapy-navy mb-2">No client data found</h3>
+            <p className="text-gray-600">The requested client data could not be loaded.</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
+      {/* Success Message */}
+      {updateSuccess && (
+        <div className="fixed top-4 right-4 z-50 bg-therapy-green bg-opacity-20 border border-therapy-green rounded-lg p-4 shadow-lg">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 text-therapy-green mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-therapy-green font-medium">Client profile updated successfully!</p>
+          </div>
+        </div>
+      )}
+
       {/* Client Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -124,27 +401,17 @@ export default function ClientProfile({ params }: ClientProfileProps) {
               </Link>
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-therapy-coral rounded-full flex items-center justify-center">
-                  <span className="text-white text-xl font-medium">{clientData.photo}</span>
+                  <span className="text-white text-xl font-medium">{getInitials(clientData.full_name)}</span>
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-therapy-navy">{clientData.name}</h1>
+                  <h1 className="text-3xl font-bold text-therapy-navy">{clientData.full_name}</h1>
                   <div className="flex items-center space-x-4 mt-1">
-                    <span className="text-gray-600">{clientData.age} years • {clientData.gender}</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      clientData.status === 'Active' 
-                        ? 'bg-therapy-green bg-opacity-20 text-therapy-green'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {clientData.status}
+                    <span className="text-gray-600">{clientData.age} years • {formatGender(clientData.gender, clientData.custom_gender)}</span>
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-therapy-green bg-opacity-20 text-therapy-green">
+                      Active
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      clientData.riskLevel === 'High' 
-                        ? 'bg-red-100 text-red-600'
-                        : clientData.riskLevel === 'Medium'
-                        ? 'bg-yellow-100 text-yellow-600'
-                        : 'bg-therapy-green bg-opacity-20 text-therapy-green'
-                    }`}>
-                      {clientData.riskLevel} Risk
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-therapy-green bg-opacity-20 text-therapy-green">
+                      Low Risk
                     </span>
                   </div>
                 </div>
@@ -154,8 +421,11 @@ export default function ClientProfile({ params }: ClientProfileProps) {
               <button className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
                 Schedule Session
               </button>
-              <button className="px-6 py-3 border border-therapy-blue text-therapy-navy rounded-lg hover:bg-therapy-blue hover:bg-opacity-10 transition-colors font-medium">
-                Generate Agenda
+              <button 
+                onClick={() => setActiveTab('edit')}
+                className="px-6 py-3 border border-therapy-blue text-therapy-navy rounded-lg hover:bg-therapy-blue hover:bg-opacity-10 transition-colors font-medium"
+              >
+                Edit Profile
               </button>
             </div>
           </div>
@@ -192,73 +462,73 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                 <h3 className="text-lg font-semibold text-therapy-navy mb-4">Personal Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Occupation</label>
-                    <p className="text-therapy-navy">{clientData.occupation}</p>
+                    <label className="text-sm font-medium text-gray-600">Full Name</label>
+                    <p className="text-therapy-navy">{clientData.full_name}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Phone</label>
-                    <p className="text-therapy-navy">{clientData.phone}</p>
+                    <label className="text-sm font-medium text-gray-600">Age</label>
+                    <p className="text-therapy-navy">{clientData.age} years</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Email</label>
-                    <p className="text-therapy-navy">{clientData.email}</p>
+                    <label className="text-sm font-medium text-gray-600">Gender</label>
+                    <p className="text-therapy-navy">{formatGender(clientData.gender, clientData.custom_gender)}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Emergency Contact</label>
-                    <p className="text-therapy-navy">{clientData.emergencyContact}</p>
+                    <label className="text-sm font-medium text-gray-600">Client ID</label>
+                    <p className="text-therapy-navy">#{clientData.id}</p>
                   </div>
-                  
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Insurance Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Provider</label>
-                    <p className="text-therapy-navy">{clientData.insuranceProvider}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Policy Number</label>
-                    <p className="text-therapy-navy">{clientData.policyNumber}</p>
+              {clientData.background && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-therapy-navy mb-4">Background Information</h3>
+                  <div className="prose max-w-none">
+                    <p className="text-therapy-navy leading-relaxed whitespace-pre-wrap">{clientData.background}</p>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Summary Stats */}
             <div className="space-y-6">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Treatment Summary</h3>
+                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Client Details</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Start Date</span>
-                    <span className="text-therapy-navy font-medium">{clientData.startDate}</span>
+                    <span className="text-gray-600">Created Date</span>
+                    <span className="text-therapy-navy font-medium">{formatDate(clientData.created_at)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Last Session</span>
-                    <span className="text-therapy-navy font-medium">{clientData.lastSession}</span>
+                    <span className="text-gray-600">Last Updated</span>
+                    <span className="text-therapy-navy font-medium">{formatDate(clientData.updated_at)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Total Sessions</span>
-                    <span className="text-therapy-navy font-medium">{clientData.totalSessions}</span>
+                    <span className="text-gray-600">UUID</span>
+                    <span className="text-therapy-navy font-medium text-xs">{clientData.uuid}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Current Status</span>
-                    <span className="text-therapy-navy font-medium">{clientData.status}</span>
+                    <span className="text-gray-600">Status</span>
+                    <span className="text-therapy-navy font-medium">Active</span>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Goals & Progress</h3>
+                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Quick Actions</h3>
                 <div className="space-y-3">
-                  {clientData.aiBackground.goals.map((goal, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-therapy-coral rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-therapy-navy text-sm">{goal}</span>
-                    </div>
-                  ))}
+                  <button className="w-full px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors text-sm font-medium">
+                    Schedule Session
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('edit')}
+                    className="w-full px-4 py-2 border border-therapy-blue text-therapy-navy rounded-lg hover:bg-therapy-blue hover:bg-opacity-10 transition-colors text-sm font-medium"
+                  >
+                    Edit Profile
+                  </button>
+                  <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                    Export Data
+                  </button>
                 </div>
               </div>
             </div>
@@ -266,115 +536,236 @@ export default function ClientProfile({ params }: ClientProfileProps) {
         )}
 
         {activeTab === 'sessions' && (
-          <div className="space-y-6">
-            {clientData.sessions.map((session) => (
-              <div key={session.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <div className="flex items-center space-x-4 mb-2">
-                      <h3 className="text-lg font-semibold text-therapy-navy">Session #{session.id}</h3>
-                      <span className="text-gray-500">{session.date}</span>
-                      <span className="text-gray-500">•</span>
-                      <span className="text-gray-500">{session.duration}</span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        session.mood === 'Improving' 
-                          ? 'bg-therapy-green bg-opacity-20 text-therapy-green'
-                          : session.mood === 'Stable'
-                          ? 'bg-therapy-blue bg-opacity-20 text-therapy-blue'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {session.mood}
-                      </span>
-                    </div>
-                    <p className="text-gray-600 leading-relaxed mb-4">{session.summary}</p>
-                    {session.nextGoals.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-therapy-navy mb-2">Next Session Goals:</h4>
-                        <ul className="space-y-1">
-                          {session.nextGoals.map((goal, index) => (
-                            <li key={index} className="flex items-start space-x-2">
-                              <div className="w-1.5 h-1.5 bg-therapy-coral rounded-full mt-2 flex-shrink-0"></div>
-                              <span className="text-sm text-gray-600">{goal}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex space-x-2">
-                    <Link 
-                      href={`/session-analysis?session=${session.id}`}
-                      className="px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors text-sm font-medium"
-                    >
-                      View Analysis
-                    </Link>
-                    <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
-                      Export Notes
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="text-center py-12">
+            <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <h3 className="text-lg font-semibold text-therapy-navy mb-2">No Sessions Yet</h3>
+            <p className="text-gray-600 mb-4">This client hasn't had any therapy sessions yet.</p>
+            <button className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
+              Schedule First Session
+            </button>
           </div>
         )}
 
         {activeTab === 'insights' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Key Traits</h3>
-                <div className="flex flex-wrap gap-2">
-                  {clientData.aiBackground.keyTraits.map((trait, index) => (
-                    <span key={index} className="px-3 py-2 bg-therapy-blue bg-opacity-20 text-therapy-navy rounded-full text-sm font-medium">
-                      {trait}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Risk Factors</h3>
-                <div className="space-y-3">
-                  {clientData.aiBackground.riskFactors.map((factor, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-therapy-navy text-sm">{factor}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Treatment Goals</h3>
-                <div className="space-y-3">
-                  {clientData.aiBackground.goals.map((goal, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-therapy-green rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-therapy-navy text-sm">{goal}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Therapeutic Approach</h3>
-                <p className="text-therapy-navy leading-relaxed">{clientData.aiBackground.therapeuticApproach}</p>
-              </div>
-            </div>
+          <div className="text-center py-12">
+            <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            <h3 className="text-lg font-semibold text-therapy-navy mb-2">AI Insights Coming Soon</h3>
+            <p className="text-gray-600 mb-4">AI-powered insights and analysis will be available once session data is recorded.</p>
+            <button className="px-6 py-3 bg-therapy-blue text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
+              Learn More
+            </button>
           </div>
         )}
 
         {activeTab === 'edit' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-therapy-navy mb-6">Edit Profile</h3>
-            <div className="text-center py-12 text-gray-500">
-              <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              <p>Profile editing form will be implemented here</p>
-              <p className="text-sm mt-2">This would include all the fields from the overview section in an editable form</p>
+          <div className="max-w-4xl mx-auto">
+            {/* Error Banner */}
+            {formErrors.general && (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex">
+                  <svg className="w-5 h-5 text-red-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 15c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <p className="text-red-800">{formErrors.general}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-8">
+              {/* Personal Information Panel */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-therapy-navy">Edit Client Information</h2>
+                  <div className="flex items-center space-x-3">
+                    {!editMode && (
+                      <button
+                        onClick={() => setEditMode(true)}
+                        className="px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium flex items-center space-x-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        <span>Edit</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Full Name */}
+                  <div>
+                    <label htmlFor="fullName" className="block text-sm font-medium text-therapy-navy mb-2">
+                      Client Name <span className="text-red-500">*</span>
+                    </label>
+                    {editMode ? (
+                      <input
+                        type="text"
+                        id="fullName"
+                        name="fullName"
+                        value={formData.full_name}
+                        onChange={(e) => handleInputChange('full_name', e.target.value)}
+                        placeholder="e.g. Jordan Smith"
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${
+                          formErrors.full_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
+                      />
+                    ) : (
+                      <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.full_name}</p>
+                    )}
+                    {formErrors.full_name && (
+                      <p className="mt-1 text-sm text-red-600">{formErrors.full_name}</p>
+                    )}
+                  </div>
+
+                  {/* Age */}
+                  <div>
+                    <label htmlFor="age" className="block text-sm font-medium text-therapy-navy mb-2">
+                      Age <span className="text-red-500">*</span>
+                    </label>
+                    {editMode ? (
+                      <input
+                        type="number"
+                        id="age"
+                        name="age"
+                        min="0"
+                        max="120"
+                        value={formData.age}
+                        onChange={(e) => handleInputChange('age', e.target.value)}
+                        placeholder="25"
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${
+                          formErrors.age ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
+                      />
+                    ) : (
+                      <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.age} years</p>
+                    )}
+                    {formErrors.age && (
+                      <p className="mt-1 text-sm text-red-600">{formErrors.age}</p>
+                    )}
+                  </div>
+
+                  {/* Gender */}
+                  <div>
+                    <fieldset>
+                      <legend className="block text-sm font-medium text-therapy-navy mb-4">
+                        Gender <span className="text-red-500">*</span>
+                      </legend>
+                      {editMode ? (
+                        <div className="space-y-3">
+                          {genderOptions.map((option) => (
+                            <div key={option.value} className="flex items-center">
+                              <input
+                                type="radio"
+                                id={`gender-${option.value}`}
+                                name="gender"
+                                value={option.value}
+                                checked={formData.gender === option.value}
+                                onChange={(e) => handleInputChange('gender', e.target.value)}
+                                className="h-4 w-4 text-therapy-coral focus:ring-therapy-coral border-gray-300"
+                              />
+                              <label htmlFor={`gender-${option.value}`} className="ml-3 text-sm text-therapy-navy">
+                                {option.label}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">
+                          {formatGender(clientData.gender, clientData.custom_gender)}
+                        </p>
+                      )}
+                      
+                      {/* Custom Gender Input */}
+                      {editMode && formData.gender === 'other' && (
+                        <div className="mt-3">
+                          <input
+                            type="text"
+                            placeholder="Please specify"
+                            value={formData.custom_gender}
+                            onChange={(e) => handleInputChange('custom_gender', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-therapy-coral focus:border-transparent"
+                          />
+                        </div>
+                      )}
+                      
+                      {formErrors.gender && (
+                        <p className="mt-2 text-sm text-red-600">{formErrors.gender}</p>
+                      )}
+                    </fieldset>
+                  </div>
+                </div>
+              </div>
+
+              {/* Background Information Panel */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Background Information</h3>
+
+                <div className="space-y-4">
+                  {editMode ? (
+                    <>
+                      <textarea
+                        rows={8}
+                        value={formData.background}
+                        onChange={(e) => {
+                          if (e.target.value.length <= maxBackgroundLength) {
+                            handleInputChange('background', e.target.value)
+                          }
+                        }}
+                        placeholder="Enter relevant history, presenting concerns, referral source, etc."
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent resize-none"
+                      />
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={`${maxBackgroundLength - formData.background.length < 100 ? 'text-red-500' : 'text-gray-500'}`}>
+                          {maxBackgroundLength - formData.background.length} characters remaining
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="prose max-w-none">
+                      {clientData.background ? (
+                        <p className="text-therapy-navy leading-relaxed whitespace-pre-wrap">{clientData.background}</p>
+                      ) : (
+                        <p className="text-gray-400 italic">No background information available</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              {editMode && (
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={handleCancelEdit}
+                    className="text-gray-600 hover:text-therapy-navy transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting || Object.keys(formErrors).length > 0}
+                    className="px-8 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <span>Save Changes</span>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

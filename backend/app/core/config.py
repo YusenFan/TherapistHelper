@@ -34,7 +34,10 @@ settings = Settings()
 
 # Encryption utility
 class EncryptionManager:
-    def __init__(self, key: bytes):
+    def __init__(self, key: str):
+        # Handle both string and bytes keys
+        if isinstance(key, str):
+            key = key.encode()
         self.fernet = Fernet(key)
     
     def encrypt(self, data: str) -> str:
@@ -47,7 +50,11 @@ class EncryptionManager:
         """Decrypt base64 encoded data and return original string"""
         if not encrypted_data:
             return encrypted_data
-        return self.fernet.decrypt(encrypted_data.encode()).decode()
+        try:
+            return self.fernet.decrypt(encrypted_data.encode()).decode()
+        except Exception as e:
+            print(f"Decryption error: {e}")
+            return "[DECRYPTION_FAILED]"
 
 
 # Global encryption manager

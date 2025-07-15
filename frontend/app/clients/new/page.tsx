@@ -207,159 +207,155 @@ export default function NewClientPage() {
         )}
 
         {/* Two-Panel Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="space-y-8">
           
-          {/* Panel One: Basic Information (Left 2/3) */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm bor   der border-gray-200 p-8">
-              <h2 className="text-xl font-semibold text-therapy-navy mb-6">Basic Information</h2>
-              
-              <div className="space-y-6">
-                {/* Full Name */}
-                <div>
-                  <label htmlFor="fullName" className="block text-sm font-medium text-therapy-navy mb-2">
-                    Client Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="fullName"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={(e) => handleInputChange('fullName', e.target.value)}
-                    placeholder="e.g. Jordan Smith"
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${
-                      errors.fullName ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                    }`}
-                    aria-describedby={errors.fullName ? 'fullName-error' : 'fullName-help'}
-                  />
-                  {errors.fullName ? (
-                    <p id="fullName-error" className="mt-1 text-sm text-red-600">{errors.fullName}</p>
-                  ) : (
-                    <p id="fullName-help" className="mt-1 text-sm text-gray-500">Required</p>
-                  )}
-                </div>
+          {/* Panel One: Basic Information */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <h2 className="text-xl font-semibold text-therapy-navy mb-6">Basic Information</h2>
+            
+            <div className="space-y-6">
+              {/* Full Name */}
+              <div>
+                <label htmlFor="fullName" className="block text-sm font-medium text-therapy-navy mb-2">
+                  Client Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="fullName"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={(e) => handleInputChange('fullName', e.target.value)}
+                  placeholder="e.g. Jordan Smith"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${
+                    errors.fullName ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
+                  aria-describedby={errors.fullName ? 'fullName-error' : 'fullName-help'}
+                />
+                {errors.fullName ? (
+                  <p id="fullName-error" className="mt-1 text-sm text-red-600">{errors.fullName}</p>
+                ) : (
+                  <p id="fullName-help" className="mt-1 text-sm text-gray-500">Required</p>
+                )}
+              </div>
 
-                {/* Age */}
-                <div>
-                  <label htmlFor="age" className="block text-sm font-medium text-therapy-navy mb-2">
-                    Age <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    id="age"
-                    name="age"
-                    min="0"
-                    max="120"
-                    value={formData.age}
-                    onChange={(e) => handleInputChange('age', e.target.value)}
-                    placeholder="25"
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${
-                      errors.age ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                    }`}
-                    aria-describedby={errors.age ? 'age-error' : 'age-help'}
-                  />
-                  {errors.age ? (
-                    <p id="age-error" className="mt-1 text-sm text-red-600">{errors.age}</p>
-                  ) : (
-                    <p id="age-help" className="mt-1 text-sm text-gray-500">Required</p>
-                  )}
-                </div>
+              {/* Age */}
+              <div>
+                <label htmlFor="age" className="block text-sm font-medium text-therapy-navy mb-2">
+                  Age <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="age"
+                  name="age"
+                  min="0"
+                  max="120"
+                  value={formData.age}
+                  onChange={(e) => handleInputChange('age', e.target.value)}
+                  placeholder="25"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${
+                    errors.age ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
+                  aria-describedby={errors.age ? 'age-error' : 'age-help'}
+                />
+                {errors.age ? (
+                  <p id="age-error" className="mt-1 text-sm text-red-600">{errors.age}</p>
+                ) : (
+                  <p id="age-help" className="mt-1 text-sm text-gray-500">Required</p>
+                )}
+              </div>
 
-                {/* Gender */}
-                <div>
-                  <fieldset>
-                    <legend className="block text-sm font-medium text-therapy-navy mb-4">
-                      Gender <span className="text-red-500">*</span>
-                    </legend>
-                    <div className="space-y-3">
-                      {genderOptions.map((option) => (
-                        <div key={option.value} className="flex items-center">
-                          <input
-                            type="radio"
-                            id={`gender-${option.value}`}
-                            name="gender"
-                            value={option.value}
-                            checked={formData.gender === option.value}
-                            onChange={(e) => handleInputChange('gender', e.target.value)}
-                            className="h-4 w-4 text-therapy-coral focus:ring-therapy-coral border-gray-300"
-                          />
-                          <label htmlFor={`gender-${option.value}`} className="ml-3 text-sm text-therapy-navy">
-                            {option.label}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* Custom Gender Input */}
-                    {formData.gender === 'other' && (
-                      <div className="mt-3">
+              {/* Gender */}
+              <div>
+                <fieldset>
+                  <legend className="block text-sm font-medium text-therapy-navy mb-4">
+                    Gender <span className="text-red-500">*</span>
+                  </legend>
+                  <div className="space-y-3">
+                    {genderOptions.map((option) => (
+                      <div key={option.value} className="flex items-center">
                         <input
-                          type="text"
-                          placeholder="Please specify"
-                          value={formData.customGender}
-                          onChange={(e) => handleInputChange('customGender', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-therapy-coral focus:border-transparent"
+                          type="radio"
+                          id={`gender-${option.value}`}
+                          name="gender"
+                          value={option.value}
+                          checked={formData.gender === option.value}
+                          onChange={(e) => handleInputChange('gender', e.target.value)}
+                          className="h-4 w-4 text-therapy-coral focus:ring-therapy-coral border-gray-300"
                         />
+                        <label htmlFor={`gender-${option.value}`} className="ml-3 text-sm text-therapy-navy">
+                          {option.label}
+                        </label>
                       </div>
-                    )}
-                    
-                    {errors.gender && (
-                      <p className="mt-2 text-sm text-red-600">{errors.gender}</p>
-                    )}
-                  </fieldset>
-                </div>
+                    ))}
+                  </div>
+                  
+                  {/* Custom Gender Input */}
+                  {formData.gender === 'other' && (
+                    <div className="mt-3">
+                      <input
+                        type="text"
+                        placeholder="Please specify"
+                        value={formData.customGender}
+                        onChange={(e) => handleInputChange('customGender', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-therapy-coral focus:border-transparent"
+                      />
+                    </div>
+                  )}
+                  
+                  {errors.gender && (
+                    <p className="mt-2 text-sm text-red-600">{errors.gender}</p>
+                  )}
+                </fieldset>
               </div>
             </div>
           </div>
 
-          {/* Panel Two: Client Background (Right 1/3) */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-fit">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-therapy-navy">Background</h3>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="ai-toggle"
-                    checked={isAIEnabled}
-                    onChange={(e) => setIsAIEnabled(e.target.checked)}
-                    className="h-4 w-4 text-therapy-coral focus:ring-therapy-coral border-gray-300 rounded"
-                  />
-                  <label htmlFor="ai-toggle" className="ml-2 text-xs text-gray-600">
-                    AI Suggestions
-                  </label>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <textarea
-                  rows={8}
-                  value={formData.background}
-                  onChange={(e) => {
-                    if (e.target.value.length <= maxBackgroundLength) {
-                      handleInputChange('background', e.target.value)
-                    }
-                  }}
-                  placeholder="Enter relevant history, presenting concerns, referral source, etc."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent resize-none"
+          {/* Panel Two: Client Background */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-therapy-navy">Background Information</h3>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="ai-toggle"
+                  checked={isAIEnabled}
+                  onChange={(e) => setIsAIEnabled(e.target.checked)}
+                  className="h-4 w-4 text-therapy-coral focus:ring-therapy-coral border-gray-300 rounded"
                 />
+                <label htmlFor="ai-toggle" className="ml-2 text-xs text-gray-600">
+                  AI Suggestions
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <textarea
+                rows={8}
+                value={formData.background}
+                onChange={(e) => {
+                  if (e.target.value.length <= maxBackgroundLength) {
+                    handleInputChange('background', e.target.value)
+                  }
+                }}
+                placeholder="Enter relevant history, presenting concerns, referral source, etc."
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent resize-none"
+              />
+              
+              <div className="flex items-center justify-between text-sm">
+                <span className={`${remainingChars < 100 ? 'text-red-500' : 'text-gray-500'}`}>
+                  {remainingChars} characters remaining
+                </span>
                 
-                <div className="flex items-center justify-between text-sm">
-                  <span className={`${remainingChars < 100 ? 'text-red-500' : 'text-gray-500'}`}>
-                    {remainingChars} characters remaining
-                  </span>
-                  
-                  {isAIEnabled && (
-                    <button
-                      type="button"
-                      onClick={generateAISuggestions}
-                      disabled={!formData.fullName || !formData.age || !formData.gender}
-                      className="px-3 py-1 bg-therapy-blue bg-opacity-20 text-therapy-navy rounded text-xs hover:bg-opacity-30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Generate
-                    </button>
-                  )}
-                </div>
+                {isAIEnabled && (
+                  <button
+                    type="button"
+                    onClick={generateAISuggestions}
+                    disabled={!formData.fullName || !formData.age || !formData.gender}
+                    className="px-3 py-1 bg-therapy-blue bg-opacity-20 text-therapy-navy rounded text-xs hover:bg-opacity-30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Generate
+                  </button>
+                )}
               </div>
             </div>
           </div>
