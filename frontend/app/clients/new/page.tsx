@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { apiClient, type ClientData } from '@/lib/api'
 
 interface FormData {
   fullName: string
@@ -138,16 +139,27 @@ export default function NewClientPage() {
     setIsSubmitting(true)
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Prepare client data for API
+      const clientData: ClientData = {
+        full_name: formData.fullName,
+        age: parseInt(formData.age),
+        gender: formData.gender,
+        custom_gender: formData.gender === 'other' ? formData.customGender : undefined,
+        background: formData.background || undefined
+      }
       
-      // Mock successful creation - in real app would call API
-      console.log('Creating client:', formData)
+      // Create client via API
+      const newClient = await apiClient.createClient(clientData)
       
-      // Redirect to the new client's profile (mock ID: 999)
-      router.push('/clients/999?created=true')
+      // Redirect to the new client's profile
+      router.push(`/clients/${newClient.id}?created=true`)
     } catch (error) {
-      setErrors({ general: 'Failed to create client profile. Please try again.' })
+      console.error('Failed to create client:', error)
+      setErrors({ 
+        general: error instanceof Error 
+          ? error.message 
+          : 'Failed to create client profile. Please try again.' 
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -199,7 +211,7 @@ export default function NewClientPage() {
           
           {/* Panel One: Basic Information (Left 2/3) */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="bg-white rounded-xl shadow-sm bor   der border-gray-200 p-8">
               <h2 className="text-xl font-semibold text-therapy-navy mb-6">Basic Information</h2>
               
               <div className="space-y-6">
