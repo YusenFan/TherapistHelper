@@ -28,10 +28,11 @@ This repository contains the source code for the Minimum Viable Product (MVP).
 - **File Storage**: Local/Cloud storage (to be configured)
 
 ### Development & Deployment
+- **Containerization**: Docker & Docker Compose (recommended)
 - **Package Management**: 
   - Frontend: npm/yarn
   - Backend: pip with virtual environment
-- **Environment**: Docker (optional)
+- **Environment**: Docker for development and production
 - **Version Control**: Git
 
 ## ✨ Core Features (MVP)
@@ -60,74 +61,185 @@ For the MVP, we are using a **Monolithic Architecture**. This approach simplifie
 
 ## 🚀 Getting Started
 
-### Prerequisites
-- **Node.js** (v18 or later)
-- **Python** (v3.9 or later)  
-- **PostgreSQL** installed and running
-- **API keys** for:
-  - An audio transcription service (AssemblyAI)
-  - An AI language model service (OpenAI)
+## 🚀 Quick Start with Docker (Recommended)
 
-### Installation & Setup
+The easiest way to run TherapistHelper is using Docker:
+
+### Prerequisites
+- **Docker** and **Docker Compose** installed
+- **API keys** for:
+  - OpenAI (for transcription and analysis)
+
+### Setup Steps
 
 #### 1. Clone the repository:
 ```bash
 git clone https://github.com/your-username/Therapist Helper-ai.git
-cd Therapist Helper-ai
+cd TherapistHelper
 ```
 
-#### 2. Setup Backend:
-Navigate to the backend directory:
+#### 2. Configure Environment Variables:
+Create a `.env` file in the project root:
+```env
+# OpenAI API Keys (get these from https://platform.openai.com/api-keys)
+OPENAI_TRANSCRIPTION_API_KEY=sk-proj-your-transcription-key-here
+OPENAI_ANALYSIS_API_KEY=sk-proj-your-analysis-key-here
+
+# Optional: Other environment variables
+DATABASE_URL=postgresql://therapist:therapist123@localhost:5432/therapist_helper
+ENVIRONMENT=development
+```
+
+#### 3. Run with Docker:
+```bash
+# Make the setup script executable
+chmod +x scripts/dev-setup.sh
+
+# Start all services (PostgreSQL, Backend, Frontend)
+./scripts/dev-setup.sh
+```
+
+This will automatically:
+- Start PostgreSQL database
+- Build and run the FastAPI backend
+- Build and run the Next.js frontend
+- Set up all necessary dependencies
+
+#### 4. Access the Application
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **Database**: localhost:5432 (username: `therapist`, password: `therapist123`)
+
+#### 5. Stop Services
+```bash
+# Stop all services
+docker-compose down
+```
+
+### 🔧 Docker Useful Commands
+
+```bash
+# View logs for all services
+docker-compose logs -f
+
+# View logs for specific service
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f postgres
+
+# Restart specific service
+docker-compose restart backend
+
+# Rebuild and restart everything
+docker-compose down && docker-compose up --build
+
+# Access database directly
+docker-compose exec postgres psql -U therapist -d therapist_helper
+
+# Check running containers
+docker-compose ps
+
+# Remove all containers and volumes (CAUTION: This deletes data)
+docker-compose down -v
+```
+
+### 🐛 Docker Troubleshooting
+
+**If you encounter Docker network issues:**
+```bash
+# Clean Docker system
+docker system prune -f
+
+# Try building specific service
+docker-compose build backend
+
+# Check Docker is running
+docker --version
+docker-compose --version
+```
+
+**If ports are already in use:**
+```bash
+# Check what's using the ports
+lsof -i :3000  # Frontend port
+lsof -i :8000  # Backend port
+lsof -i :5432  # Database port
+
+# Kill processes using the ports
+sudo kill -9 <PID>
+```
+
+---
+
+## 🛠️ Manual Setup (Alternative)
+
+If you prefer to run components individually without Docker:
+
+### Prerequisites
+- **Node.js** (v18 or later)
+- **Python** (v3.9 or later)  
+- **PostgreSQL** installed and running
+- **API keys** for OpenAI
+
+### Installation Steps
+
+#### 1. Clone the repository:
+```bash
+git clone https://github.com/your-username/Therapist Helper-ai.git
+cd TherapistHelper
+```
+
+#### 2. Setup Database:
+```bash
+# Start PostgreSQL (if using Docker for database only)
+docker-compose up -d postgres
+
+# Or setup local PostgreSQL
+createdb therapist_helper
+```
+
+#### 3. Setup Backend:
 ```bash
 cd backend
-```
 
-Create and activate a virtual environment:
-```bash
+# Create virtual environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
 
-Install dependencies:
-```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Create .env file
+cat > .env << EOF
+DATABASE_URL=postgresql://therapist:therapist123@localhost:5432/therapist_helper
+OPENAI_TRANSCRIPTION_API_KEY=sk-proj-your-transcription-key
+OPENAI_ANALYSIS_API_KEY=sk-proj-your-analysis-key
+SECRET_KEY=your-secret-key-change-in-production
+ENVIRONMENT=development
+EOF
+
+# Run backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Create a `.env` file and add your secret keys and database URL:
-```env
-DATABASE_URL="postgresql://user:password@host:port/dbname"
-OPENAI_API_KEY="sk-..."
-ASSEMBLYAI_API_KEY="..."
-SECRET_KEY="your-secret-key-here"
-```
-
-Run the server:
+#### 4. Setup Frontend:
 ```bash
-uvicorn main:app --reload
-```
+cd frontend
 
-#### 3. Setup Frontend:
-Navigate to the frontend directory:
-```bash
-cd ../frontend
-```
-
-Install dependencies:
-```bash
+# Install dependencies
 npm install
-```
 
-Create a `.env.local` file and add the backend API URL:
-```env
-NEXT_PUBLIC_API_URL="http://127.0.0.1:8000"
-```
+# Create environment file
+cat > .env.local << EOF
+NEXT_PUBLIC_API_URL=http://localhost:8000
+EOF
 
-Run the development server:
-```bash
+# Run frontend
 npm run dev
 ```
 
-### 4. Access the Application
+#### 5. Access the Application
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
