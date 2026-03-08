@@ -1,26 +1,17 @@
+"""
+Main FastAPI Application
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-
 from app.core.config import settings
-from app.core.database import engine
-from app.models import models
 from app.api.v1.api import api_router
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Create database tables
-    models.Base.metadata.create_all(bind=engine)
-    yield
 
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="TherapistHelper API - Secure client management system",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    lifespan=lifespan
+    description="TherapistHelper API - Secure client management with AI assistance",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
 # Set up CORS
@@ -39,7 +30,24 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.get("/")
 async def root():
     return {
-        "message": "TherapistHelper API", 
+        "message": "TherapistHelper API",
         "version": settings.VERSION,
-        "status": "running"
-    } 
+        "status": "running",
+        "database": "Appwrite",
+        "features": {
+            "client_management": True,
+            "transcription": "OpenAI Whisper",
+            "ai_analysis": "Tinfoil.sh",
+            "session_helper": True
+        }
+    }
+
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "version": settings.VERSION,
+        "database": "Appwrite",
+        "environment": settings.ENVIRONMENT
+    }
