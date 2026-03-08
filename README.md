@@ -1,10 +1,8 @@
 # TherapistHelper
 
-**Therapist Helper AI: Session Assistant for Therapists (MVP)**
+**Therapist Helper AI: AI-Powered Session Assistant for Therapists**
 
-Therapist Helper AI is a web application designed to help consultant therapists enhance client engagement by minimizing time spent on note-taking and administrative tasks. By leveraging AI, the app automates transcription, generates valuable insights, and helps prepare for future sessions, allowing therapists to focus fully on their clients.
-
-This repository contains the source code for the Minimum Viable Product (MVP).
+TherapistHelper is a web application designed to help therapists enhance client engagement by minimizing time spent on note-taking and administrative tasks. By leveraging AI, the app automates transcription, generates valuable insights, and helps prepare for future sessions.
 
 ## 🛠️ Tech Stack
 
@@ -19,187 +17,116 @@ This repository contains the source code for the Minimum Viable Product (MVP).
 - **API Documentation**: Automatic OpenAPI/Swagger
 
 ### Database
-- **Primary Database**: PostgreSQL
-- **ORM**: SQLAlchemy (recommended)
+- **Primary Database**: Appwrite (Cloud-based, HIPAA-ready)
+- **No ORM**: Direct Appwrite Python SDK
 
 ### AI & External Services
-- **Audio Transcription**: AssemblyAI
-- **AI Language Model**: OpenAI GPT-4o
-- **File Storage**: Local/Cloud storage (to be configured)
+- **Audio Transcription**: OpenAI Whisper
+- **AI Language Model**: Tinfoil.sh API (confidential, patient data safe)
+- **File Storage**: Appwrite Storage
 
 ### Development & Deployment
-- **Containerization**: Docker & Docker Compose (recommended)
-- **Package Management**: 
+- **No Docker**: Run locally
+- **Package Management**:
   - Frontend: npm/yarn
   - Backend: pip with virtual environment
-- **Environment**: Docker for development and production
 - **Version Control**: Git
 
-## ✨ Core Features (MVP)
+## ✨ Core Features
 
-**Client Database**: An organized system to create and manage client profiles, including basic demographics and a centralized location for all session-related data.
+### 📋 Client Database
+- Create and manage client profiles
+- Encrypted storage of sensitive data (names, background)
+- Tag system for organization
+- Notes and documentation
+- Attendance tracking
+- Search and filtering
 
-**Audio Transcription**: Upload session audio recordings and receive fast, accurate transcripts.
+### 🎙️ Audio Transcription
+- Upload session recordings (MP3, WAV, M4A, etc.)
+- OpenAI Whisper for accurate transcription
+- Automatic session creation
+- Support for audio URLs
 
-**AI-Powered Summaries & Insights**: Automatically generate concise summaries and key insights from session transcripts to track client progress and themes.
+### 🤖 AI-Powered Insights
+- **Transcript Analysis**: Generate summaries, key points, emotional states
+- **Progress Tracking**: Identify indicators of progress
+- **Therapeutic Recommendations**: AI-suggested interventions
+- **Client Background Updates**: Auto-update profiles from transcripts
 
-**AI Session Helper (Pre-Session)**: Receive AI-generated session guidelines before each meeting, including suggested talking points, questions, and engagement strategies based on the client's history.
+### 📅 Session Helper
+- **Pre-Session**: Generate agendas and suggested questions
+- **Engagement Activities**: Suggest games and exercises
+- **Post-Session**: Generate clinical documentation and logs
+- **Context-Aware**: AI remembers each client's background
 
-**AI Documentation (Post-Session)**: Instantly generate structured session logs and notes based on the transcript, streamlining the documentation process.
+### 📝 Intake Forms
+- Comprehensive client intake
+- Family structure and relationships
+- Health and medical history
+- Work and education background
+- Shareable links for clients to fill out
 
-## 🏛️ High-Level Architecture
+### 🔒 Security & Privacy
+- Field-level encryption for all sensitive data
+- Tinfoil.sh API ensures confidential LLM processing
+- Client context awareness (never confuse patients)
+- HIPAA-ready infrastructure with Appwrite
 
-For the MVP, we are using a **Monolithic Architecture**. This approach simplifies development, testing, and deployment, making it ideal for a small team and rapid iteration. The entire application (frontend and backend) is built as a single, unified system that communicates with third-party APIs for specialized tasks.
+## 🏛️ Architecture
 
-### Data Flow:
-1. Therapist interacts with the **React Frontend** (Next.js)
-2. Frontend sends requests (e.g., audio upload) to the **Python Backend API** (FastAPI)
-3. Backend securely sends the audio file to the **Transcription Service API** (AssemblyAI)
-4. Backend receives the transcript and sends it to the **Language Model API** (OpenAI GPT-4o) for analysis, summarization, and generation
-5. Backend stores client data, transcripts, and AI-generated content in the **PostgreSQL Database**
-6. Processed information is sent back to the frontend for the therapist to view
+### System Design
+```
+Frontend (Next.js) → Backend (FastAPI) → Appwrite Database
+     ↓                    ↓                     ↓
+Port 3000            Port 8000             Cloud API
+                          ↓
+                    OpenAI Whisper
+                    (Transcription)
+                          ↓
+                    Tinfoil.sh API
+                    (Confidential AI)
+```
+
+### Data Flow
+1. Therapist interacts with **Next.js Frontend**
+2. Frontend sends requests to **FastAPI Backend**
+3. Backend stores data in **Appwrite Database** (encrypted)
+4. For transcription → **OpenAI Whisper**
+5. For AI analysis → **Tinfoil.sh API** (confidential)
+6. Results stored and returned to frontend
+
+### Appwrite Collections
+- `clients` - Client profiles with encrypted data
+- `sessions` - Therapy sessions with transcripts
+- `notes` - Client notes and observations
+- `tags` - Client categorization tags
+- `attendance` - Session attendance records
 
 ## 🚀 Getting Started
 
-## 🚀 Quick Start with Docker (Recommended)
-
-The easiest way to run TherapistHelper is using Docker:
-
-### Prerequisites
-- **Docker** and **Docker Compose** installed
-- **API keys** for:
-  - OpenAI (for transcription and analysis)
-
-### Setup Steps
-
-#### 1. Clone the repository:
-```bash
-git clone https://github.com/your-username/Therapist Helper-ai.git
-cd TherapistHelper
-```
-
-#### 2. Configure Environment Variables:
-Create a `.env` file in the project root:
-```env
-# OpenAI API Keys (get these from https://platform.openai.com/api-keys)
-OPENAI_TRANSCRIPTION_API_KEY=sk-proj-your-transcription-key-here
-OPENAI_ANALYSIS_API_KEY=sk-proj-your-analysis-key-here
-
-# Optional: Other environment variables
-DATABASE_URL=postgresql://therapist:therapist123@localhost:5432/therapist_helper
-ENVIRONMENT=development
-```
-
-#### 3. Run with Docker:
-```bash
-# Make the setup script executable
-chmod +x scripts/dev-setup.sh
-
-# Start all services (PostgreSQL, Backend, Frontend)
-./scripts/dev-setup.sh
-```
-
-This will automatically:
-- Start PostgreSQL database
-- Build and run the FastAPI backend
-- Build and run the Next.js frontend
-- Set up all necessary dependencies
-
-#### 4. Access the Application
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Database**: localhost:5432 (username: `therapist`, password: `therapist123`)
-
-#### 5. Stop Services
-```bash
-# Stop all services
-docker-compose down
-```
-
-### 🔧 Docker Useful Commands
-
-```bash
-# View logs for all services
-docker-compose logs -f
-
-# View logs for specific service
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f postgres
-
-# Restart specific service
-docker-compose restart backend
-
-# Rebuild and restart everything
-docker-compose down && docker-compose up --build
-
-# Access database directly
-docker-compose exec postgres psql -U therapist -d therapist_helper
-
-# Check running containers
-docker-compose ps
-
-# Remove all containers and volumes (CAUTION: This deletes data)
-docker-compose down -v
-```
-
-### 🐛 Docker Troubleshooting
-
-**If you encounter Docker network issues:**
-```bash
-# Clean Docker system
-docker system prune -f
-
-# Try building specific service
-docker-compose build backend
-
-# Check Docker is running
-docker --version
-docker-compose --version
-```
-
-**If ports are already in use:**
-```bash
-# Check what's using the ports
-lsof -i :3000  # Frontend port
-lsof -i :8000  # Backend port
-lsof -i :5432  # Database port
-
-# Kill processes using the ports
-sudo kill -9 <PID>
-```
-
----
-
-## 🛠️ Manual Setup (Alternative)
-
-If you prefer to run components individually without Docker:
-
 ### Prerequisites
 - **Node.js** (v18 or later)
-- **Python** (v3.9 or later)  
-- **PostgreSQL** installed and running
-- **API keys** for OpenAI
+- **Python** (v3.9 or later)
+- **Appwrite Account** (free tier works)
+- **OpenAI API Key** (for Whisper)
+- **Tinfoil.sh API Key** (provided in .env)
 
-### Installation Steps
+### Step 1: Setup Appwrite
 
-#### 1. Clone the repository:
-```bash
-git clone https://github.com/your-username/Therapist Helper-ai.git
-cd TherapistHelper
-```
+1. Go to [Appwrite Console](https://cloud.appwrite.io)
+2. Create a new project
+3. Get your **Project ID** and **API Key**
+4. Create a database named `therapist_helper`
+5. Create collections (optional - will auto-create on first use):
+   - `clients`
+   - `sessions`
+   - `notes`
+   - `tags`
+   - `attendance`
 
-#### 2. Setup Database:
-```bash
-# Start PostgreSQL (if using Docker for database only)
-docker-compose up -d postgres
+### Step 2: Backend Setup
 
-# Or setup local PostgreSQL
-createdb therapist_helper
-```
-
-#### 3. Setup Backend:
 ```bash
 cd backend
 
@@ -211,19 +138,45 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Create .env file
-cat > .env << EOF
-DATABASE_URL=postgresql://therapist:therapist123@localhost:5432/therapist_helper
-OPENAI_TRANSCRIPTION_API_KEY=sk-proj-your-transcription-key
-OPENAI_ANALYSIS_API_KEY=sk-proj-your-analysis-key
-SECRET_KEY=your-secret-key-change-in-production
-ENVIRONMENT=development
-EOF
+cp .env.example .env
 
-# Run backend
+# Edit .env with your API keys
+nano .env  # or use your preferred editor
+```
+
+**Required Environment Variables:**
+```env
+# Appwrite
+APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+APPWRITE_PROJECT_ID=your-project-id
+APPWRITE_API_KEY=your-api-key
+
+# OpenAI (Whisper)
+OPENAI_API_KEY=sk-your-openai-key
+
+# Tinfoil.sh (LLM)
+TINFOIL_API_KEY=tk_Y8afZljtIO7bsSE4joTfmRlbuwNLAMZjRnWNawl3MLcjP1B0
+
+# Security
+SECRET_KEY=your-secret-key
+ENCRYPTION_KEY=your-encryption-key
+```
+
+**Generate Encryption Keys:**
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+**Run Backend:**
+```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-#### 4. Setup Frontend:
+Backend will be available at: http://localhost:8000
+API Docs: http://localhost:8000/docs
+
+### Step 3: Frontend Setup
+
 ```bash
 cd frontend
 
@@ -239,35 +192,133 @@ EOF
 npm run dev
 ```
 
-#### 5. Access the Application
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-
-## ⚠️ CRITICAL NOTE: Security & HIPAA Compliance
-
-This application is designed to handle extremely sensitive **Protected Health Information (PHI)**. Standard development practices are not sufficient.
-
-### Security Requirements:
-- **DO NOT** use this code in production without ensuring full HIPAA compliance
-- The application **MUST** be deployed on a HIPAA-compliant hosting provider (e.g., AWS, Google Cloud, Azure) with a signed Business Associate Agreement (BAA)
-- All data **MUST** be encrypted at rest and in transit
-- Implement robust authentication, authorization, and audit logging features
-- Regular security audits and penetration testing are required
-
-**Security is the most critical feature of this application. All development work must be done with a "security-first" mindset.**
+Frontend will be available at: http://localhost:3000
 
 ## 📁 Project Structure
+
 ```
-Therapist Helper-ai/
-├── frontend/          # Next.js React application
-├── backend/           # FastAPI Python application  
-├── database/          # Database migrations and schemas
-├── docs/              # Documentation
-└── README.md          # This file
+TherapistHelper/
+├── frontend/              # Next.js React application
+│   ├── app/              # Next.js app directory
+│   ├── components/       # React components
+│   └── public/           # Static assets
+├── backend/              # FastAPI Python application
+│   ├── app/
+│   │   ├── api/          # API endpoints
+│   │   │   └── v1/
+│   │   │       └── endpoints/
+│   │   │           ├── clients.py
+│   │   │           ├── sessions.py
+│   │   │           ├── transcription.py
+│   │   │           ├── ai.py
+│   │   │           ├── notes.py
+│   │   │           └── intake.py
+│   │   ├── core/        # Configuration
+│   │   │   ├── config.py
+│   │   │   └── appwrite_client.py
+│   │   ├── crud/        # Database operations
+│   │   │   ├── client.py
+│   │   │   ├── session.py
+│   │   │   └── note.py
+│   │   ├── models/      # Pydantic models
+│   │   ├── services/    # External services
+│   │   │   ├── transcription.py
+│   │   │   └── llm.py
+│   │   └── main.py      # FastAPI app
+│   ├── requirements.txt
+│   └── .env.example
+└── README.md
 ```
 
+## 🔌 API Endpoints
+
+### Clients
+- `POST /api/v1/clients` - Create client
+- `GET /api/v1/clients` - List clients
+- `GET /api/v1/clients/{id}` - Get client
+- `PUT /api/v1/clients/{id}` - Update client
+- `DELETE /api/v1/clients/{id}` - Delete client
+- `GET /api/v1/clients/search/{query}` - Search clients
+
+### Sessions
+- `POST /api/v1/sessions` - Create session
+- `GET /api/v1/sessions` - List sessions
+- `GET /api/v1/sessions/client/{id}` - Get client sessions
+- `GET /api/v1/sessions/{id}` - Get session
+- `PUT /api/v1/sessions/{id}` - Update session
+
+### Transcription
+- `POST /api/v1/transcription/upload` - Upload & transcribe audio
+- `POST /api/v1/transcription/from-url` - Transcribe from URL
+
+### AI Services
+- `POST /api/v1/ai/analyze` - Analyze transcript
+- `POST /api/v1/ai/session/agenda` - Generate session agenda
+- `POST /api/v1/ai/session/log` - Generate session log
+- `POST /api/v1/ai/client/background` - Update client background
+- `POST /api/v1/ai/chat` - Chat with AI (client context aware)
+
+### Notes
+- `POST /api/v1/notes` - Create note
+- `GET /api/v1/notes` - List notes
+- `GET /api/v1/notes/client/{id}` - Get client notes
+- `PUT /api/v1/notes/{id}` - Update note
+- `DELETE /api/v1/notes/{id}` - Delete note
+
+### Intake Forms
+- `POST /api/v1/intake/{id}` - Submit intake form
+- `GET /api/v1/intake/{id}` - Get intake form
+- `POST /api/v1/intake/{id}/share-link` - Generate share link
+
+## 🔒 Security & HIPAA Compliance
+
+### Implemented Security Measures
+- ✅ Field-level encryption for sensitive data
+- ✅ Tinfoil.sh API for confidential AI processing
+- ✅ Client context awareness (prevent patient confusion)
+- ✅ Secure API key management
+- ✅ CORS protection
+- ✅ Input validation
+
+### Important Notes
+- This application handles **Protected Health Information (PHI)**
+- Use only on HIPAA-compliant infrastructure in production
+- Ensure all API keys are kept secure
+- Implement proper authentication/authorization before production
+- Regular security audits recommended
+
+## 🚧 Roadmap
+
+### Phase 1: MVP (Current)
+- ✅ Client database with encryption
+- ✅ Audio transcription (Whisper)
+- ✅ AI analysis (Tinfoil.sh)
+- ✅ Session management
+- ✅ Notes system
+- ✅ Intake forms
+
+### Phase 2: Frontend & UX
+- 🚧 React frontend development
+- 🚧 Client overview page
+- 🚧 Session management UI
+- 🚧 Transcription upload interface
+- 🚧 AI insights dashboard
+
+### Phase 3: Advanced Features
+- ⏳ User authentication
+- ⏳ Role-based access control
+- ⏳ Calendar integration
+- ⏳ Automated reminders
+- ⏳ Advanced analytics
+
+### Phase 4: Production
+- ⏳ Landing page
+- ⏳ Payment integration (Stripe)
+- ⏳ Multi-tenant support
+- ⏳ HIPAA certification
+
 ## 🤝 Contributing
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
@@ -275,4 +326,13 @@ Therapist Helper-ai/
 5. Open a Pull Request
 
 ## 📄 License
+
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- OpenAI Whisper for transcription
+- Tinfoil.sh for confidential AI services
+- Appwrite for the database platform
+- FastAPI for the backend framework
+- Next.js for the frontend framework
