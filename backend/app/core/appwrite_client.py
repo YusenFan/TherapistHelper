@@ -1,6 +1,6 @@
 """
 Appwrite Database Client
-Handles all Appwrite database operations
+Handles all Appwrite database operations using Tables API (new)
 """
 from appwrite.client import Client
 from appwrite.services.databases import Databases
@@ -8,7 +8,6 @@ from appwrite.exception import AppwriteException
 from app.core.config import settings
 from typing import Dict, List, Optional, Any
 import json
-import uuid
 
 
 class AppwriteDB:
@@ -27,109 +26,105 @@ class AppwriteDB:
 
     # Collection Operations
 
-    async def create_document(
+    async def create_row(
         self,
-        collection_id: str,
-        document_data: Dict[str, Any],
-        document_id: Optional[str] = None
+        table_id: str,
+        column_data: Dict[str, Any],
+        row_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Create a new document in a collection"""
+        """Create a new row in a table"""
         try:
-            # Generate document ID if not provided
-            if not document_id:
-                document_id = str(uuid.uuid4())
-
-            result = self.databases.create_document(
+            result = self.databases.create_row(
                 database_id=settings.APPWRITE_DATABASE_ID,
-                collection_id=collection_id,
-                document_id=document_id,
-                data=document_data
+                table_id=table_id,
+                row_id=row_id,
+                column_data=column_data
             )
             return result
         except AppwriteException as e:
-            raise Exception(f"Appwrite create document error: {e.message}")
+            raise Exception(f"Appwrite create row error: {e.message}")
 
-    async def get_document(
+    async def list_rows(
         self,
-        collection_id: str,
-        document_id: str
-    ) -> Dict[str, Any]:
-        """Get a document by ID"""
-        try:
-            result = self.databases.get_document(
-                database_id=settings.APPWRITE_DATABASE_ID,
-                collection_id=collection_id,
-                document_id=document_id
-            )
-            return result
-        except AppwriteException as e:
-            raise Exception(f"Appwrite get document error: {e.message}")
-
-    async def list_documents(
-        self,
-        collection_id: str,
+        table_id: str,
         queries: Optional[List[str]] = None
     ) -> Dict[str, Any]:
-        """List all documents in a collection"""
+        """List all rows in a table"""
         try:
-            result = self.databases.list_documents(
+            result = self.databases.list_rows(
                 database_id=settings.APPWRITE_DATABASE_ID,
-                collection_id=collection_id,
+                table_id=table_id,
                 queries=queries or []
             )
             return result
         except AppwriteException as e:
-            raise Exception(f"Appwrite list documents error: {e.message}")
+            raise Exception(f"Appwrite list rows error: {e.message}")
 
-    async def update_document(
+    async def get_row(
         self,
-        collection_id: str,
-        document_id: str,
-        document_data: Dict[str, Any]
+        table_id: str,
+        row_id: str
     ) -> Dict[str, Any]:
-        """Update a document"""
+        """Get a row by ID"""
         try:
-            result = self.databases.update_document(
+            result = self.databases.get_row(
                 database_id=settings.APPWRITE_DATABASE_ID,
-                collection_id=collection_id,
-                document_id=document_id,
-                data=document_data
+                table_id=table_id,
+                row_id=row_id
             )
             return result
         except AppwriteException as e:
-            raise Exception(f"Appwrite update document error: {e.message}")
+            raise Exception(f"Appwrite get row error: {e.message}")
 
-    async def delete_document(
+    async def update_row(
         self,
-        collection_id: str,
-        document_id: str
+        table_id: str,
+        row_id: str,
+        column_data: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Delete a document"""
+        """Update a row"""
         try:
-            result = self.databases.delete_document(
+            result = self.databases.update_row(
                 database_id=settings.APPWRITE_DATABASE_ID,
-                collection_id=collection_id,
-                document_id=document_id
+                table_id=table_id,
+                row_id=row_id,
+                column_data=column_data
             )
             return result
         except AppwriteException as e:
-            raise Exception(f"Appwrite delete document error: {e.message}")
+            raise Exception(f"Appwrite update row error: {e.message}")
+
+    async def delete_row(
+        self,
+        table_id: str,
+        row_id: str
+    ) -> Dict[str, Any]:
+        """Delete a row"""
+        try:
+            result = self.databases.delete_row(
+                database_id=settings.APPWRITE_DATABASE_ID,
+                table_id=table_id,
+                row_id=row_id
+            )
+            return result
+        except AppwriteException as e:
+            raise Exception(f"Appwrite delete row error: {e.message}")
 
     # Client-specific operations
 
     async def create_client(self, client_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new client"""
-        return await self.create_document(
-            collection_id=settings.COLLECTION_CLIENTS,
-            document_data=client_data
+        return await self.create_row(
+            table_id=settings.COLLECTION_CLIENTS,
+            column_data=client_data
         )
 
     async def get_client(self, client_id: str) -> Optional[Dict[str, Any]]:
         """Get a client by ID"""
         try:
-            result = await self.get_document(
-                collection_id=settings.COLLECTION_CLIENTS,
-                document_id=client_id
+            result = await self.get_row(
+                table_id=settings.COLLECTION_CLIENTS,
+                row_id=client_id
             )
             return result
         except Exception:
@@ -137,29 +132,30 @@ class AppwriteDB:
 
     async def list_clients(self, queries: Optional[List[str]] = None) -> Dict[str, Any]:
         """List all clients"""
-        return await self.list_documents(
-            collection_id=settings.COLLECTION_CLIENTS,
+        return await self.list_rows(
+            table_id=settings.COLLECTION_CLIENTS,
             queries=queries
         )
 
     async def update_client(self, client_id: str, client_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Update a client"""
         try:
-            result = await self.update_document(
-                collection_id=settings.COLLECTION_CLIENTS,
-                document_id=client_id,
-                document_data=client_data
+            result = await self.update_row(
+                table_id=settings.COLLECTION_CLIENTS,
+                row_id=client_id,
+                column_data=client_data
             )
             return result
-        except Exception:
+        except Exception as e:
+            print(f"Error updating client: {e}")
             return None
 
     async def delete_client(self, client_id: str) -> bool:
         """Delete a client by ID"""
         try:
-            await self.delete_document(
-                collection_id=settings.COLLECTION_CLIENTS,
-                document_id=client_id
+            await self.delete_row(
+                table_id=settings.COLLECTION_CLIENTS,
+                row_id=client_id
             )
             return True
         except Exception:
@@ -178,14 +174,10 @@ class AppwriteDB:
         return await self.list_clients(queries=['equal("status", "active")'])
 
     async def search_clients(self, query: str) -> Dict[str, Any]:
-        """Search clients by name, email, or tags"""
+        """Search clients by name or tags"""
         try:
-            # Note: This is inefficient - in production, use proper search or indexing
             queries = [f'search("{query}")']
-            return await self.list_documents(
-                collection_id=settings.COLLECTION_CLIENTS,
-                queries=queries
-            )
+            return await self.list_clients(queries=queries)
         except Exception as e:
             print(f"Error searching clients: {e}")
             return {"documents": [], "total": 0}
@@ -198,11 +190,17 @@ class AppwriteDB:
                 return None
 
             tags = existing.get("tags", [])
+            if isinstance(tags, str):
+                tags = json.loads(tags)
+            elif not isinstance(tags, list):
+                tags = []
+
             if tag not in tags:
                 tags.append(tag)
-                return await self.update_client(client_id, {"tags": tags})
+                return await self.update_client(client_id, {"tags": json.dumps(tags)})
             return existing
-        except Exception:
+        except Exception as e:
+            print(f"Error adding tag: {e}")
             return None
 
     async def remove_tag(self, client_id: str, tag: str) -> Optional[Dict[str, Any]]:
@@ -213,11 +211,17 @@ class AppwriteDB:
                 return None
 
             tags = existing.get("tags", [])
+            if isinstance(tags, str):
+                tags = json.loads(tags)
+            elif not isinstance(tags, list):
+                tags = []
+
             if tag in tags:
                 tags.remove(tag)
-                return await self.update_client(client_id, {"tags": tags})
+                return await self.update_client(client_id, {"tags": json.dumps(tags)})
             return existing
-        except Exception:
+        except Exception as e:
+            print(f"Error removing tag: {e}")
             return None
 
     async def update_background(
