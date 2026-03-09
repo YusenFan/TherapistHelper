@@ -8,6 +8,7 @@ from appwrite.exception import AppwriteException
 from app.core.config import settings
 from typing import Dict, List, Optional, Any
 import json
+import uuid
 
 
 class AppwriteDB:
@@ -34,19 +35,16 @@ class AppwriteDB:
     ) -> Dict[str, Any]:
         """Create a new document in a collection"""
         try:
-            if document_id:
-                result = self.databases.create_document(
-                    database_id=settings.APPWRITE_DATABASE_ID,
-                    collection_id=collection_id,
-                    document_id=document_id,
-                    data=document_data
-                )
-            else:
-                result = self.databases.create_document(
-                    database_id=settings.APPWRITE_DATABASE_ID,
-                    collection_id=collection_id,
-                    data=document_data
-                )
+            # Generate document ID if not provided
+            if not document_id:
+                document_id = str(uuid.uuid4())
+
+            result = self.databases.create_document(
+                database_id=settings.APPWRITE_DATABASE_ID,
+                collection_id=collection_id,
+                document_id=document_id,
+                data=document_data
+            )
             return result
         except AppwriteException as e:
             raise Exception(f"Appwrite create document error: {e.message}")
@@ -126,12 +124,16 @@ class AppwriteDB:
             document_data=client_data
         )
 
-    async def get_client(self, client_id: str) -> Dict[str, Any]:
+    async def get_client(self, client_id: str) -> Optional[Dict[str, Any]]:
         """Get a client by ID"""
-        return await self.get_document(
-            collection_id=settings.COLLECTION_CLIENTS,
-            document_id=client_id
-        )
+        try:
+            result = await self.get_document(
+                collection_id=settings.COLLECTION_CLIENTS,
+                document_id=client_id
+            )
+            return result
+        except Exception:
+            return None
 
     async def list_clients(self, queries: Optional[List[str]] = None) -> Dict[str, Any]:
         """List all clients"""
@@ -140,67 +142,91 @@ class AppwriteDB:
             queries=queries
         )
 
-    async def update_client(self, client_id: str, client_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_client(self, client_id: str, client_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Update a client"""
-        return await self.update_document(
-            collection_id=settings.COLLECTION_CLIENTS,
-            document_id=client_id,
-            document_data=client_data
-        )
+        try:
+            result = await self.update_document(
+                collection_id=settings.COLLECTION_CLIENTS,
+                document_id=client_id,
+                document_data=client_data
+            )
+            return result
+        except Exception:
+            return None
 
-    async def delete_client(self, client_id: str) -> Dict[str, Any]:
-        """Delete a client"""
-        return await self.delete_document(
-            collection_id=settings.COLLECTION_CLIENTS,
-            document_id=client_id
-        )
+    async def delete_client(self, client_id: str) -> bool:
+        """Delete a client by ID"""
+        try:
+            await self.delete_document(
+                collection_id=settings.COLLECTION_CLIENTS,
+                document_id=client_id
+            )
+            return True
+        except Exception:
+            return False
 
-    # Session-specific operations
+    async def count(self) -> int:
+        """Get total count of clients"""
+        try:
+            result = await self.list_clients()
+            return result.get("total", 0)
+        except Exception:
+            return 0
 
-    async def create_session(self, session_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new session"""
-        return await self.create_document(
-            collection_id=settings.COLLECTION_SESSIONS,
-            document_data=session_data
-        )
+    async def get_active_clients(self) -> Dict[str, Any]:
+        """Get all active clients"""
+        return await self.list_clients(queries=['equal("status", "active")'])
 
-    async def get_client_sessions(self, client_id: str) -> Dict[str, Any]:
-        """Get all sessions for a client"""
-        queries = [
-            f'equal("client_id", "{client_id}")',
-            'orderDesc("created_at")'
-        ]
-        return await self.list_documents(
-            collection_id=settings.COLLECTION_SESSIONS,
-            queries=queries
-        )
+    async def search_clients(self, query: str) -> Dict[str, Any]:
+        """Search clients by name, email, or tags"""
+        try:
+            # Note: This is inefficient - in production, use proper search or indexing
+            queries = [f'search("{query}")']
+            return await self.list_documents(
+                collection_id=settings.COLLECTION_CLIENTS,
+                queries=queries
+            )
+        except Exception as e:
+            print(f"Error searching clients: {e}")
+            return {"documents": [], "total": 0}
 
-    async def get_session(self, session_id: str) -> Dict[str, Any]:
-        """Get a session by ID"""
-        return await self.get_document(
-            collection_id=settings.COLLECTION_SESSIONS,
-            document_id=session_id
-        )
+    async def add_tag(self, client_id: str, tag: str) -> Optional[Dict[str, Any]]:
+        """Add a tag to a client"""
+        try:
+            existing = await self.get_client(client_id)
+            if not existing:
+                return None
 
-    # Note-specific operations
+            tags = existing.get("tags", [])
+            if tag not in tags:
+                tags.append(tag)
+                return await self.update_client(client_id, {"tags": tags})
+            return existing
+        except Exception:
+            return None
 
-    async def create_note(self, note_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new note"""
-        return await self.create_document(
-            collection_id=settings.COLLECTION_NOTES,
-            document_data=note_data
-        )
+    async def remove_tag(self, client_id: str, tag: str) -> Optional[Dict[str, Any]]:
+        """Remove a tag from a client"""
+        try:
+            existing = await self.get_client(client_id)
+            if not existing:
+                return None
 
-    async def get_client_notes(self, client_id: str) -> Dict[str, Any]:
-        """Get all notes for a client"""
-        queries = [
-            f'equal("client_id", "{client_id}")',
-            'orderDesc("created_at")'
-        ]
-        return await self.list_documents(
-            collection_id=settings.COLLECTION_NOTES,
-            queries=queries
-        )
+            tags = existing.get("tags", [])
+            if tag in tags:
+                tags.remove(tag)
+                return await self.update_client(client_id, {"tags": tags})
+            return existing
+        except Exception:
+            return None
+
+    async def update_background(
+        self,
+        client_id: str,
+        background: str
+    ) -> Optional[Dict[str, Any]]:
+        """Update client background (usually AI-generated from transcripts)."""
+        return await self.update_client(client_id, {"background": background})
 
 
 # Global Appwrite database instance
