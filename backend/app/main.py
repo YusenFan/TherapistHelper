@@ -11,7 +11,8 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="TherapistHelper API - Secure client management with AI assistance",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    redirect_slashes=False  # Disable automatic trailing slash redirects
 )
 
 # Set up CORS

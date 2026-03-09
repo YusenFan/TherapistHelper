@@ -32,49 +32,49 @@ class AppwriteDB:
         column_data: Dict[str, Any],
         row_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Create a new row in a table"""
+        """Create a new row in a table (using Appwrite Documents API)"""
         try:
-            result = self.databases.create_row(
+            result = self.databases.create_document(
                 database_id=settings.APPWRITE_DATABASE_ID,
-                table_id=table_id,
-                row_id=row_id,
-                column_data=column_data
+                collection_id=table_id,
+                document_id=row_id or "unique()",
+                data=column_data
             )
             return result
         except AppwriteException as e:
-            raise Exception(f"Appwrite create row error: {e.message}")
+            raise Exception(f"Appwrite create document error: {e.message}")
 
     async def list_rows(
         self,
         table_id: str,
         queries: Optional[List[str]] = None
     ) -> Dict[str, Any]:
-        """List all rows in a table"""
+        """List all rows in a table (using Appwrite Documents API)"""
         try:
-            result = self.databases.list_rows(
+            result = self.databases.list_documents(
                 database_id=settings.APPWRITE_DATABASE_ID,
-                table_id=table_id,
+                collection_id=table_id,
                 queries=queries or []
             )
             return result
         except AppwriteException as e:
-            raise Exception(f"Appwrite list rows error: {e.message}")
+            raise Exception(f"Appwrite list documents error: {e.message}")
 
     async def get_row(
         self,
         table_id: str,
         row_id: str
     ) -> Dict[str, Any]:
-        """Get a row by ID"""
+        """Get a row by ID (using Appwrite Documents API)"""
         try:
-            result = self.databases.get_row(
+            result = self.databases.get_document(
                 database_id=settings.APPWRITE_DATABASE_ID,
-                table_id=table_id,
-                row_id=row_id
+                collection_id=table_id,
+                document_id=row_id
             )
             return result
         except AppwriteException as e:
-            raise Exception(f"Appwrite get row error: {e.message}")
+            raise Exception(f"Appwrite get document error: {e.message}")
 
     async def update_row(
         self,
@@ -82,33 +82,33 @@ class AppwriteDB:
         row_id: str,
         column_data: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Update a row"""
+        """Update a row (using Appwrite Documents API)"""
         try:
-            result = self.databases.update_row(
+            result = self.databases.update_document(
                 database_id=settings.APPWRITE_DATABASE_ID,
-                table_id=table_id,
-                row_id=row_id,
-                column_data=column_data
+                collection_id=table_id,
+                document_id=row_id,
+                data=column_data
             )
             return result
         except AppwriteException as e:
-            raise Exception(f"Appwrite update row error: {e.message}")
+            raise Exception(f"Appwrite update document error: {e.message}")
 
     async def delete_row(
         self,
         table_id: str,
         row_id: str
     ) -> Dict[str, Any]:
-        """Delete a row"""
+        """Delete a row (using Appwrite Documents API)"""
         try:
-            result = self.databases.delete_row(
+            result = self.databases.delete_document(
                 database_id=settings.APPWRITE_DATABASE_ID,
-                table_id=table_id,
-                row_id=row_id
+                collection_id=table_id,
+                document_id=row_id
             )
             return result
         except AppwriteException as e:
-            raise Exception(f"Appwrite delete row error: {e.message}")
+            raise Exception(f"Appwrite delete document error: {e.message}")
 
     # Client-specific operations
 
