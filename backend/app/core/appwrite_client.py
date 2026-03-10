@@ -1,236 +1,273 @@
 """
-Appwrite Database Client
-Handles all Appwrite database operations using Tables API (new)
+Appwrite Database Client - Simplified using REST API
+Handles all Appwrite database operations for tablesdb type databases
 """
-from appwrite.client import Client
-from appwrite.services.databases import Databases
-from appwrite.exception import AppwriteException
+import requests
 from app.core.config import settings
 from typing import Dict, List, Optional, Any
-import json
+from datetime import datetime
+import uuid
 
 
 class AppwriteDB:
-    """Appwrite database client wrapper"""
+    """Appwrite database client wrapper - simplified REST API calls"""
 
     def __init__(self):
-        self.client = Client()
-        self._setup_client()
-        self.databases = Databases(self.client)
+        self.endpoint = settings.APPWRITE_ENDPOINT
+        self.project_id = settings.APPWRITE_PROJECT_ID
+        self.api_key = settings.APPWRITE_API_KEY
+        self.database_id = settings.APPWRITE_DATABASE_ID
 
-    def _setup_client(self):
-        """Configure Appwrite client"""
-        self.client.set_endpoint(settings.APPWRITE_ENDPOINT)
-        self.client.set_project(settings.APPWRITE_PROJECT_ID)
-        self.client.set_key(settings.APPWRITE_API_KEY)
+        # Common headers
+        self.headers = {
+            "Content-Type": "application/json",
+            "X-Appwrite-Key": self.api_key,
+            "X-Appwrite-Project": self.project_id
+        }
 
-    # Collection Operations
+    def _make_request(self, method: str, url: str, **kwargs) -> requests.Response:
+        """Make a request to Appwrite API"""
+        try:
+            response = requests.request(
+                method=method,
+                url=url,
+                headers=self.headers,
+                timeout=30,
+                **kwargs
+            )
+            return response
+        except Exception as e:
+            raise Exception(f"Appwrite API request failed: {str(e)}")
 
-    async def create_row(
+    def _handle_response(self, response: requests.Response, operation: str) -> Dict[str, Any]:
+        """Handle Appwrite API response and check for errors"""
+        try:
+            result = response.json()
+
+            if response.status_code >= 400:
+                error_msg = result.get('message', 'Unknown error')
+                error_type = result.get('type', 'unknown')
+                error_code = result.get('code', response.status_code)
+
+                raise Exception(
+                    f"Appwrite {operation} error: {error_msg} "
+                    f"(Type: {error_type}, Code: {error_code})"
+                )
+
+            return result
+        except Exception as e:
+            # Response wasn't JSON
+            raise Exception(
+                f"Appwrite {operation} failed: "
+                f"Status {response.status_code}, Response: {response.text[:200]}"
+            )
+
+    # ==================== CREATE OPERATIONS ====================
+
+    def create_row(
         self,
         table_id: str,
         column_data: Dict[str, Any],
         row_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Create a new row in a table (using Appwrite Documents API)"""
-        try:
-            result = self.databases.create_document(
-                database_id=settings.APPWRITE_DATABASE_ID,
-                collection_id=table_id,
-                document_id=row_id or "unique()",
-                data=column_data
-            )
-            return result
-        except AppwriteException as e:
-            raise Exception(f"Appwrite create document error: {e.message}")
+        """Create a new row in a table"""
+        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}"
 
-    async def list_rows(
+        response = self._make_request(
+            method="POST",
+            url=url,
+            json=column_data
+        )
+
+        result = self._handle_response(response, "create")
+
+        # Add system fields if not present
+        if result and result.get('$id'):
+            result['created_at'] = datetime.utcnow().isoformat()
+            result['updated_at'] = datetime.utcnow().isoformat()
+
+        return result
+
+    def upsert_row(
         self,
         table_id: str,
-        queries: Optional[List[str]] = None
+        column_data: Dict[str, Any],
+        row_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """List all rows in a table (using Appwrite Documents API)"""
-        try:
-            result = self.databases.list_documents(
-                database_id=settings.APPWRITE_DATABASE_ID,
-                collection_id=table_id,
-                queries=queries or []
-            )
-            return result
-        except AppwriteException as e:
-            raise Exception(f"Appwrite list documents error: {e.message}")
+        """Create or update a row (upsert)"""
+        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}"
 
-    async def get_row(
+        response = self._make_request(
+            method="POST",
+            url=url,
+            json=column_data
+        )
+
+        result = self._handle_response(response, "upsert")
+
+        # Add system fields
+        if result and result.get('$id'):
+            result['updated_at'] = datetime.utcnow().isoformat()
+
+        return result
+
+    # ==================== LIST/QUERY OPERATIONS ====================
+
+    def list_rows(
+        self,
+        table_id: str,
+        queries: Optional[List[str]] = None,
+        limit: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """List all rows in a table with optional filtering"""
+        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}/documents"
+
+        params = {}
+        if queries:
+            params['queries'] = queries
+        if limit:
+            params['limit'] = limit
+
+        response = self._make_request(
+            method="GET",
+            url=url,
+            params=params
+        )
+
+        return self._handle_response(response, "list")
+
+    def search_rows(
+        self,
+        table_id: str,
+        search_query: str
+    ) -> Dict[str, Any]:
+        """Search rows using query"""
+        # Using the search query format from Appwrite docs
+        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}/documents"
+
+        # Build search query
+        # Appwrite uses search() method with Query class
+        # For now, use simple text search
+        from appwrite.query import Query
+        search_query = Query.search(search_query)
+
+        response = self._make_request(
+            method="POST",
+            url=url,
+            json={'queries': [search_query]}
+        )
+
+        return self._handle_response(response, "search")
+
+    # ==================== GET SINGLE ROW ====================
+
+    def get_row(
         self,
         table_id: str,
         row_id: str
-    ) -> Dict[str, Any]:
-        """Get a row by ID (using Appwrite Documents API)"""
-        try:
-            result = self.databases.get_document(
-                database_id=settings.APPWRITE_DATABASE_ID,
-                collection_id=table_id,
-                document_id=row_id
-            )
-            return result
-        except AppwriteException as e:
-            raise Exception(f"Appwrite get document error: {e.message}")
+    ) -> Optional[Dict[str, Any]]:
+        """Get a single row by ID"""
+        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}/documents/{row_id}"
 
-    async def update_row(
+        response = self._make_request(
+            method="GET",
+            url=url
+        )
+
+        if response.status_code == 404:
+            return None
+
+        return self._handle_response(response, "get")
+
+    # ==================== UPDATE OPERATIONS ====================
+
+    def update_row(
         self,
         table_id: str,
         row_id: str,
         column_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Update a row (using Appwrite Documents API)"""
-        try:
-            result = self.databases.update_document(
-                database_id=settings.APPWRITE_DATABASE_ID,
-                collection_id=table_id,
-                document_id=row_id,
-                data=column_data
-            )
-            return result
-        except AppwriteException as e:
-            raise Exception(f"Appwrite update document error: {e.message}")
+    ) -> Optional[Dict[str, Any]]:
+        """Update an existing row"""
+        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}/documents/{row_id}"
 
-    async def delete_row(
+        response = self._make_request(
+            method="PATCH",
+            url=url,
+            json=column_data
+        )
+
+        result = self._handle_response(response, "update")
+
+        # Add updated timestamp
+        if result:
+            result['updated_at'] = datetime.utcnow().isoformat()
+
+        return result
+
+    # ==================== DELETE OPERATIONS ====================
+
+    def delete_row(
         self,
         table_id: str,
         row_id: str
-    ) -> Dict[str, Any]:
-        """Delete a row (using Appwrite Documents API)"""
-        try:
-            result = self.databases.delete_document(
-                database_id=settings.APPWRITE_DATABASE_ID,
-                collection_id=table_id,
-                document_id=row_id
-            )
-            return result
-        except AppwriteException as e:
-            raise Exception(f"Appwrite delete document error: {e.message}")
+    ) -> bool:
+        """Delete a row"""
+        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}/documents/{row_id}"
 
-    # Client-specific operations
+        response = self._make_request(
+            method="DELETE",
+            url=url
+        )
 
-    async def create_client(self, client_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new client"""
-        return await self.create_row(
+        if response.status_code == 204:
+            return True
+
+        raise Exception(
+            f"Failed to delete row: {response.status_code} - {response.text[:200]}"
+        )
+
+    # ==================== CONVENIENCE METHODS ====================
+
+    def create_client(self, client_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new client (convenience method)"""
+        return self.create_row(
             table_id=settings.COLLECTION_CLIENTS,
             column_data=client_data
         )
 
-    async def get_client(self, client_id: str) -> Optional[Dict[str, Any]]:
-        """Get a client by ID"""
-        try:
-            result = await self.get_row(
-                table_id=settings.COLLECTION_CLIENTS,
-                row_id=client_id
-            )
-            return result
-        except Exception:
-            return None
-
-    async def list_clients(self, queries: Optional[List[str]] = None) -> Dict[str, Any]:
-        """List all clients"""
-        return await self.list_rows(
+    def get_clients(self, **kwargs) -> Dict[str, Any]:
+        """Get all clients (convenience method)"""
+        return self.list_rows(
             table_id=settings.COLLECTION_CLIENTS,
-            queries=queries
+            **kwargs
         )
 
-    async def update_client(self, client_id: str, client_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Update a client"""
-        try:
-            result = await self.update_row(
-                table_id=settings.COLLECTION_CLIENTS,
-                row_id=client_id,
-                column_data=client_data
-            )
-            return result
-        except Exception as e:
-            print(f"Error updating client: {e}")
-            return None
+    def get_client(self, client_id: str) -> Optional[Dict[str, Any]]:
+        """Get a client by ID (convenience method)"""
+        return self.get_row(
+            table_id=settings.COLLECTION_CLIENTS,
+            row_id=client_id
+        )
 
-    async def delete_client(self, client_id: str) -> bool:
-        """Delete a client by ID"""
-        try:
-            await self.delete_row(
-                table_id=settings.COLLECTION_CLIENTS,
-                row_id=client_id
-            )
-            return True
-        except Exception:
-            return False
+    def update_client(self, client_id: str, client_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update a client (convenience method)"""
+        return self.update_row(
+            table_id=settings.COLLECTION_CLIENTS,
+            row_id=client_id,
+            column_data=client_data
+        )
 
-    async def count(self) -> int:
-        """Get total count of clients"""
-        try:
-            result = await self.list_clients()
-            return result.get("total", 0)
-        except Exception:
-            return 0
+    def delete_client(self, client_id: str) -> bool:
+        """Delete a client (convenience method)"""
+        return self.delete_row(
+            table_id=settings.COLLECTION_CLIENTS,
+            row_id=client_id
+        )
 
-    async def get_active_clients(self) -> Dict[str, Any]:
-        """Get all active clients"""
-        return await self.list_clients(queries=['equal("status", "active")'])
-
-    async def search_clients(self, query: str) -> Dict[str, Any]:
-        """Search clients by name or tags"""
-        try:
-            queries = [f'search("{query}")']
-            return await self.list_clients(queries=queries)
-        except Exception as e:
-            print(f"Error searching clients: {e}")
-            return {"documents": [], "total": 0}
-
-    async def add_tag(self, client_id: str, tag: str) -> Optional[Dict[str, Any]]:
-        """Add a tag to a client"""
-        try:
-            existing = await self.get_client(client_id)
-            if not existing:
-                return None
-
-            tags = existing.get("tags", [])
-            if isinstance(tags, str):
-                tags = json.loads(tags)
-            elif not isinstance(tags, list):
-                tags = []
-
-            if tag not in tags:
-                tags.append(tag)
-                return await self.update_client(client_id, {"tags": json.dumps(tags)})
-            return existing
-        except Exception as e:
-            print(f"Error adding tag: {e}")
-            return None
-
-    async def remove_tag(self, client_id: str, tag: str) -> Optional[Dict[str, Any]]:
-        """Remove a tag from a client"""
-        try:
-            existing = await self.get_client(client_id)
-            if not existing:
-                return None
-
-            tags = existing.get("tags", [])
-            if isinstance(tags, str):
-                tags = json.loads(tags)
-            elif not isinstance(tags, list):
-                tags = []
-
-            if tag in tags:
-                tags.remove(tag)
-                return await self.update_client(client_id, {"tags": json.dumps(tags)})
-            return existing
-        except Exception as e:
-            print(f"Error removing tag: {e}")
-            return None
-
-    async def update_background(
-        self,
-        client_id: str,
-        background: str
-    ) -> Optional[Dict[str, Any]]:
-        """Update client background (usually AI-generated from transcripts)."""
-        return await self.update_client(client_id, {"background": background})
+    def count_clients(self) -> int:
+        """Count total clients"""
+        result = self.get_clients()
+        return result.get('total', 0)
 
 
 # Global Appwrite database instance

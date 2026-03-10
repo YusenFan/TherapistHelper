@@ -36,8 +36,13 @@ class ClientCRUD:
             "updated_at": datetime.utcnow().isoformat()
         }
 
+        # Log for debugging
+        print(f"[DEBUG] Creating client with data keys: {list(document_data.keys())}")
+        print(f"[DEBUG] Document ID: {document_id}")
+
         # Create in Appwrite
         result = await db.create_client(document_data)
+        print(f"[DEBUG] Create result keys: {list(result.keys()) if isinstance(result, dict) else type(result)}")
         return result
 
     async def get(self, client_id: str) -> Optional[Dict[str, Any]]:
