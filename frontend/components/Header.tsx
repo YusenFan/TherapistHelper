@@ -8,7 +8,7 @@ export default function Header() {
           <div className="flex items-center">
             <Link href="/">
               <h1 className="text-xl font-semibold text-therapy-navy cursor-pointer">
-                TheraFlow
+                TheraBee
               </h1>
             </Link>
           </div>

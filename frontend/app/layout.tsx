@@ -4,7 +4,7 @@ import MainLayout from '@/components/MainLayout'
 import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata: Metadata = {
-  title: 'TheraFlow',
+  title: 'TheraBee',
   description: 'Session Assistant for Therapists',
 }
 
