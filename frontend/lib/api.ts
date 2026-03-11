@@ -48,6 +48,39 @@ export interface IntakeAnalysis {
   strengths_resources: string
 }
 
+export interface ClientPresentation {
+  mood_rating?: number | null   // 1–10
+  affect?: string               // e.g. "appropriate", "flat", "labile"
+  tags?: string[]               // presenting themes / issues
+  notes?: string
+}
+
+export interface RiskAssessment {
+  risk_level?: string           // "none" | "low" | "moderate" | "high" | "imminent"
+  suicidal_ideation?: string    // "none" | "passive" | "active_without_plan" | "active_with_plan"
+  self_harm?: boolean
+  homicidal_ideation?: boolean
+  protective_factors?: string[]
+  notes?: string
+}
+
+export interface HomeworkItem {
+  task: string
+  completed: boolean
+}
+
+export interface Homework {
+  items?: HomeworkItem[]
+  notes?: string
+}
+
+export interface Planning {
+  goals?: string[]
+  interventions?: string[]
+  next_session_focus?: string
+  notes?: string
+}
+
 export interface Session {
   id: string
   client_id: string
@@ -58,6 +91,12 @@ export interface Session {
   transcript?: string
   summary?: string
   analysis?: Record<string, unknown>
+  client_presentation?: ClientPresentation
+  risk_assessment?: RiskAssessment
+  homework?: Homework
+  planning?: Planning
+  private_notes?: string
+  tags?: string[]
   created_at: string
   updated_at?: string
 }
@@ -217,7 +256,8 @@ class ApiClient {
   async schoolChat(
     school: string,
     messages: ChatMessage[],
-    clientContext?: string
+    clientContext?: string,
+    sessionIds?: string[]
   ): Promise<ChatResponse> {
     return this.request<ChatResponse>('/api/v1/ai/chat/school', {
       method: 'POST',
@@ -225,12 +265,77 @@ class ApiClient {
         school,
         messages,
         client_context: clientContext,
+        session_ids: sessionIds,
       }),
     })
   }
 
+  async *streamClientChat(
+    clientId: string,
+    mode: string,
+    messages: ChatMessage[],
+    sessionIds?: string[]
+  ): AsyncGenerator<string> {
+    const url = `${this.baseUrl}/api/v1/ai/chat/client/stream`
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ client_id: clientId, mode, messages, session_ids: sessionIds }),
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    yield* this._consumeSSE(response)
+  }
+
+  async *streamSchoolChat(
+    school: string,
+    messages: ChatMessage[],
+    clientContext?: string,
+    sessionIds?: string[]
+  ): AsyncGenerator<string> {
+    const url = `${this.baseUrl}/api/v1/ai/chat/school/stream`
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ school, messages, client_context: clientContext, session_ids: sessionIds }),
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    yield* this._consumeSSE(response)
+  }
+
+  private async *_consumeSSE(response: Response): AsyncGenerator<string> {
+    const reader = response.body!.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6)
+        if (data === '[DONE]') return
+        try {
+          const parsed = JSON.parse(data)
+          if (parsed.token) yield parsed.token
+        } catch { /* skip malformed lines */ }
+      }
+    }
+  }
+
   async getClientSessions(clientId: string): Promise<Session[]> {
-    return this.request<Session[]>(`/api/v1/sessions/client/${clientId}`)
+    const all = await this.request<Session[]>('/api/v1/sessions/')
+    return all.filter(s => s.client_id === clientId)
   }
 
   // Sessions

@@ -26,21 +26,26 @@ Note: Collection IDs are the same as collection names (human-readable slugs).
 
 ## sessions Collection Schema (ID: `sessions`)
 
-| Attribute          | Type     | Required | Max Size / Constraint        |
-|--------------------|----------|----------|------------------------------|
-| client_id          | string   | YES      | 50 chars                     |
-| session_date       | datetime | YES      |                              |
-| duration_minutes   | integer  | YES      | BigInt range                 |
-| session_type       | string   | NO       | 20 chars                     |
-| transcript         | string   | NO       | 50,000 chars                 |
-| summary            | string   | NO       | 5,000 chars                  |
-| notes              | string   | NO       | 5,000 chars                  |
-| created_at         | datetime | NO       |                              |
-| updated_at         | datetime | NO       |                              |
-| tags               | string[] | NO       | 100 chars/element, array     |
-| analysis           | longtext | NO       | unlimited (stores JSON)      |
+| Attribute            | Type     | Required | Max Size / Constraint        |
+|----------------------|----------|----------|------------------------------|
+| client_id            | string   | YES      | 50 chars                     |
+| session_date         | datetime | YES      |                              |
+| duration_minutes     | integer  | YES      | BigInt range                 |
+| session_type         | string   | NO       | 20 chars                     |
+| transcript           | string   | NO       | 50,000 chars                 |
+| summary              | string   | NO       | 5,000 chars                  |
+| notes                | string   | NO       | 5,000 chars                  |
+| created_at           | datetime | NO       |                              |
+| updated_at           | datetime | NO       |                              |
+| tags                 | string[] | NO       | 100 chars/element, array     |
+| analysis             | longtext | NO       | unlimited (stores JSON)      |
+| client_presentation  | string   | NO       | 5,000 chars                  |
+| risk_assessment      | longtext | NO       | unlimited                    |
+| homework             | longtext | NO       | unlimited                    |
+| planning             | longtext | NO       | unlimited                    |
+| private_notes        | longtext | NO       | unlimited (private/process)  |
 
-Note: At 11 attributes, sessions is at/near the Appwrite plan attribute limit for string-type columns.
+Note: sessions is at the Appwrite plan string-attribute cap (12 string-type). New large-text fields must use `longtext` type.
 `longtext` type bypasses the size-based string limit and does not count toward same cap — use it for large text fields.
 
 ## notes Collection Schema (ID: `notes`)

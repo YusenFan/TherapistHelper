@@ -206,8 +206,8 @@ export default function ClientsPage() {
                       >
                         View Profile
                       </Link>
-                      <Link 
-                        href={`/clients/${client.id}/edit`}
+                      <Link
+                        href={`/clients/${client.id}?tab=edit`}
                         className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-center"
                       >
                         Edit

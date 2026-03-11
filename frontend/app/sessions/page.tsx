@@ -245,9 +245,10 @@ export default function SessionsPage() {
                   : 'space-y-4'
               }>
                 {clientSessions.map((session) => (
-                  <div
+                  <Link
                     key={session.id}
-                    className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${
+                    href={`/sessions/${session.id}`}
+                    className={`block bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-therapy-coral transition-all cursor-pointer ${
                       viewMode === 'list' ? 'p-4' : 'p-6'
                     }`}
                   >
@@ -267,14 +268,7 @@ export default function SessionsPage() {
                           </span>
                         </div>
 
-                        <p className="text-sm text-gray-600 mb-3 overflow-hidden" style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          maxHeight: '2.5rem'
-                        }}>
-                          {session.summary || session.notes || 'No notes available'}
-                        </p>
+                        
 
                         <div className="flex items-center justify-between mb-3">
                           <span className="text-xs text-gray-500">
@@ -283,20 +277,8 @@ export default function SessionsPage() {
                         </div>
                       </div>
 
-                      <div className={`flex ${viewMode === 'list' ? 'ml-4 space-x-2' : 'space-x-2 pt-3 border-t border-gray-100'}`}>
-                        <Link
-                          href={`/session-analysis?session=${session.id}`}
-                          className="p-2 text-gray-600 hover:text-therapy-coral hover:bg-gray-50 rounded-lg transition-colors"
-                          title="View Session"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </Link>
-                      </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

@@ -3,6 +3,7 @@ AI Services API endpoints using Tinfoil.sh
 """
 import httpx
 from fastapi import APIRouter, HTTPException, status, UploadFile, File
+from fastapi.responses import StreamingResponse
 from app.core.config import settings
 from app.services.llm import llm_service
 from app.crud.client import client_crud
@@ -322,11 +323,23 @@ async def chat_school_mode(request: SchoolChatRequest) -> ChatResponse:
     Chat from the perspective of a psychological therapeutic school.
     """
     try:
+        session_summaries = None
+        if request.session_ids:
+            summaries = []
+            for sid in request.session_ids:
+                session = await session_crud.get(sid)
+                if session:
+                    text = session.get("summary") or session.get("notes")
+                    if text:
+                        summaries.append(text)
+            session_summaries = summaries if summaries else None
+
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
         reply = await llm_service.chat_psychological_school(
             school=request.school.value,
             messages=messages,
-            client_context=request.client_context
+            client_context=request.client_context,
+            session_summaries=session_summaries
         )
         return ChatResponse(reply=reply, school=request.school.value)
     except Exception as e:
@@ -376,6 +389,90 @@ async def generate_persona(client_id: str) -> dict:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Persona generation failed: {str(e)}"
+        )
+
+
+@router.post("/chat/client/stream")
+async def stream_chat_client_mode(request: ClientChatRequest) -> StreamingResponse:
+    """Streaming version of /chat/client. Returns SSE token stream."""
+    try:
+        client = await client_crud.get(request.client_id)
+        if not client:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+
+        client_info = {
+            "name": client.get("full_name", "Unknown"),
+            "age": client.get("age"),
+            "gender": client.get("gender", ""),
+            "background": client.get("background", "")
+        }
+
+        persona_doc = persona_crud.get_persona(request.client_id)
+        persona = persona_doc.get("content") if persona_doc else None
+
+        session_summaries = None
+        if request.mode.value == "supervisor" and request.session_ids:
+            summaries = []
+            for sid in request.session_ids:
+                session = await session_crud.get(sid)
+                if session:
+                    text = session.get("summary") or session.get("notes")
+                    if text:
+                        summaries.append(text)
+            session_summaries = summaries if summaries else None
+
+        messages = [{"role": m.role, "content": m.content} for m in request.messages]
+
+        return StreamingResponse(
+            llm_service.stream_chat_with_client_mode(
+                mode=request.mode.value,
+                client_info=client_info,
+                persona=persona,
+                messages=messages,
+                session_summaries=session_summaries,
+            ),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Stream chat failed: {str(e)}"
+        )
+
+
+@router.post("/chat/school/stream")
+async def stream_chat_school_mode(request: SchoolChatRequest) -> StreamingResponse:
+    """Streaming version of /chat/school. Returns SSE token stream."""
+    try:
+        session_summaries = None
+        if request.session_ids:
+            summaries = []
+            for sid in request.session_ids:
+                session = await session_crud.get(sid)
+                if session:
+                    text = session.get("summary") or session.get("notes")
+                    if text:
+                        summaries.append(text)
+            session_summaries = summaries if summaries else None
+
+        messages = [{"role": m.role, "content": m.content} for m in request.messages]
+        return StreamingResponse(
+            llm_service.stream_chat_psychological_school(
+                school=request.school.value,
+                messages=messages,
+                client_context=request.client_context,
+                session_summaries=session_summaries,
+            ),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Stream school chat failed: {str(e)}"
         )
 
 

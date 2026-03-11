@@ -2,8 +2,9 @@
 LLM Service using Tinfoil.sh API for confidential client data
 """
 import httpx
+from tinfoil import AsyncTinfoilAI
 from app.core.config import settings
-from typing import Dict, List, Optional, Any
+from typing import AsyncIterator, Dict, List, Optional, Any
 import json
 
 
@@ -17,26 +18,16 @@ class TinfoilLLMService:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
+        self._client = AsyncTinfoilAI(api_key=self.api_key)
 
     async def _make_request(
         self,
         messages: List[Dict[str, str]],
-        model: str = "llama3-3-70b",
+        model: str = "gpt-oss-120b",
         temperature: float = 0.7,
         max_tokens: int = 2000
     ) -> Dict[str, Any]:
-        """
-        Make a request to Tinfoil.sh API
-
-        Args:
-            messages: List of message dicts with 'role' and 'content'
-            model: Model name to use
-            temperature: Sampling temperature
-            max_tokens: Maximum tokens to generate
-
-        Returns:
-            dict: API response
-        """
+        """Make a non-streaming request to Tinfoil.sh API."""
         try:
             payload = {
                 "model": model,
@@ -58,6 +49,70 @@ class TinfoilLLMService:
             raise Exception(f"Tinfoil API request error: {str(e)}")
         except Exception as e:
             raise Exception(f"LLM error: {str(e)}")
+
+    async def _make_streaming_request(
+        self,
+        messages: List[Dict[str, str]],
+        model: str = "llama3-3-70b",
+        temperature: float = 0.7,
+        max_tokens: int = 2000
+    ) -> AsyncIterator[str]:
+        """Yield SSE-formatted token chunks using the Tinfoil SDK."""
+        stream = await self._client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=True,
+        )
+        async for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta.content is not None:
+                token = chunk.choices[0].delta.content
+                yield f"data: {json.dumps({'token': token})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    async def _make_streaming_request(
+        self,
+        messages: List[Dict[str, str]],
+        model: str = "llama3-3-70b",
+        temperature: float = 0.7,
+        max_tokens: int = 2000
+    ):
+        """
+        Make a streaming request to Tinfoil.sh API. Yields SSE-formatted chunks.
+        """
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True
+        }
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream(
+                "POST",
+                f"{self.api_endpoint}/chat/completions",
+                headers=self.headers,
+                json=payload
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    if line.startswith("data: "):
+                        data = line[6:]
+                        if data == "[DONE]":
+                            yield "data: [DONE]\n\n"
+                            return
+                        try:
+                            chunk = json.loads(data)
+                            delta = chunk["choices"][0].get("delta", {})
+                            token = delta.get("content", "")
+                            if token:
+                                yield f"data: {json.dumps({'token': token})}\n\n"
+                        except (json.JSONDecodeError, KeyError, IndexError):
+                            continue
 
     async def analyze_transcript(
         self,
@@ -507,11 +562,105 @@ Provide clinical supervision: help the therapist process challenges, consider al
         response = await self._make_request(full_messages, temperature=0.7, max_tokens=1500)
         return response['choices'][0]['message']['content']
 
+    async def stream_chat_with_client_mode(
+        self,
+        mode: str,
+        client_info: Dict[str, Any],
+        persona: Optional[str],
+        messages: List[Dict[str, str]],
+        session_summaries: Optional[List[str]] = None
+    ) -> AsyncIterator[str]:
+        """Streaming version of chat_with_client_mode. Yields SSE chunks."""
+        name = client_info.get("name", "the client")
+        age = client_info.get("age", "unknown age")
+        gender = client_info.get("gender", "")
+        background = client_info.get("background", "")
+        persona_section = f"\n\nClinical Persona:\n{persona}" if persona else ""
+
+        if mode == "investigate":
+            system_prompt = f"""You are an expert clinical psychologist helping a therapist investigate their client.
+
+Client Profile:
+- Name: {name}
+- Age: {age}
+- Gender: {gender}
+- Background: {background}{persona_section}
+
+Provide thoughtful clinical insights, explore patterns, and help the therapist understand this client more deeply. Be analytical and evidence-based."""
+        elif mode == "role_play":
+            system_prompt = f"""You are {name}, a {age}-year-old {gender} client in therapy.
+
+Your background: {background}{persona_section}
+
+Respond naturally as this client would in a therapy session. Show realistic emotions, defenses, and communication patterns consistent with the client's background. Do not break character."""
+        elif mode == "supervisor":
+            summaries_text = ""
+            if session_summaries:
+                summaries_text = "\n\nRecent Session Notes:\n" + "\n\n".join(session_summaries)
+            system_prompt = f"""You are an experienced clinical supervisor helping a therapist reflect on their work with a client.
+
+Client Profile:
+- Name: {name}
+- Age: {age}
+- Gender: {gender}
+- Background: {background}{persona_section}{summaries_text}
+
+Provide clinical supervision: help the therapist process challenges, consider alternative formulations, explore countertransference, and develop their clinical thinking."""
+        else:
+            system_prompt = f"You are a helpful clinical AI assistant. Client: {name}."
+
+        full_messages = [{"role": "system", "content": system_prompt}]
+        full_messages.extend(messages)
+
+        async for chunk in self._make_streaming_request(full_messages, temperature=0.7, max_tokens=1500):
+            yield chunk
+
+    async def stream_chat_psychological_school(
+        self,
+        school: str,
+        messages: List[Dict[str, str]],
+        client_context: Optional[str] = None,
+        session_summaries: Optional[List[str]] = None
+    ) -> AsyncIterator[str]:
+        """Streaming version of chat_psychological_school. Yields SSE chunks."""
+        school_descriptions = {
+            "CBT": "Cognitive Behavioral Therapy — focuses on the relationship between thoughts, feelings, and behaviors",
+            "Psychoanalytic": "Psychoanalytic therapy — explores unconscious processes, early experiences, and defense mechanisms",
+            "Humanistic": "Humanistic therapy — emphasizes personal growth, self-actualization, and unconditional positive regard",
+            "Existential": "Existential therapy — addresses meaning, freedom, responsibility, and existential anxiety",
+            "Gestalt": "Gestalt therapy — focuses on present-moment awareness, contact, and unfinished business",
+            "ACT": "Acceptance and Commitment Therapy — uses acceptance, mindfulness, and values-based action",
+            "DBT": "Dialectical Behavior Therapy — combines CBT with mindfulness and dialectical thinking",
+            "Narrative": "Narrative therapy — helps clients re-author their life stories and separate from problems",
+            "SFBT": "Solution-Focused Brief Therapy — focuses on strengths, solutions, and a preferred future",
+            "Adlerian": "Adlerian therapy — explores social interest, birth order, lifestyle, and inferiority feelings",
+            "Behavioral": "Behavioral therapy — uses learning principles to change maladaptive behaviors",
+            "IPT": "Interpersonal Therapy — focuses on improving interpersonal relationships and communication",
+        }
+        description = school_descriptions.get(school, school)
+        system_prompt = f"""You are an expert in {school} therapy. {description}
+
+Draw from the core theories, techniques, and language of {school} to respond to clinical questions.
+Suggest specific interventions, exercises, or frameworks from this approach where relevant."""
+
+        if client_context:
+            system_prompt += f"\n\nClient Context:\n{client_context}"
+
+        if session_summaries:
+            system_prompt += "\n\nRelevant Session Notes:\n" + "\n---\n".join(session_summaries)
+
+        full_messages = [{"role": "system", "content": system_prompt}]
+        full_messages.extend(messages)
+
+        async for chunk in self._make_streaming_request(full_messages, temperature=0.7, max_tokens=1500):
+            yield chunk
+
     async def chat_psychological_school(
         self,
         school: str,
         messages: List[Dict[str, str]],
-        client_context: Optional[str] = None
+        client_context: Optional[str] = None,
+        session_summaries: Optional[List[str]] = None
     ) -> str:
         """
         Chat from the perspective of a psychological therapeutic school.
@@ -540,6 +689,9 @@ Suggest specific interventions, exercises, or frameworks from this approach wher
 
         if client_context:
             system_prompt += f"\n\nClient Context:\n{client_context}"
+
+        if session_summaries:
+            system_prompt += "\n\nRelevant Session Notes:\n" + "\n---\n".join(session_summaries)
 
         full_messages = [{"role": "system", "content": system_prompt}]
         full_messages.extend(messages)

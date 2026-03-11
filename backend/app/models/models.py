@@ -57,6 +57,7 @@ class ClientResponse(ClientBase):
     full_name: Optional[str] = None
     full_name_encrypted: str
     background_encrypted: Optional[str] = None
+    background: Optional[str] = None  # Decrypted
     date_of_birth: Optional[str] = None
     notes: Optional[str] = None
     phone: Optional[str] = None
@@ -118,11 +119,57 @@ class SessionBase(BaseModel):
     session_type: str = Field(default="individual", max_length=20)  # individual, family, couple
 
 
+# ============================================================================
+# Session Clinical Sub-Models
+# ============================================================================
+
+class ClientPresentation(BaseModel):
+    """How the client presented during the session"""
+    mood_rating: Optional[int] = Field(None, ge=1, le=10)  # 1-10 scale
+    affect: Optional[str] = Field(None, max_length=50)     # e.g. appropriate, flat, labile
+    tags: List[str] = Field(default_factory=list)           # presenting issues / themes
+    notes: Optional[str] = None                             # free text observations
+
+
+class RiskAssessment(BaseModel):
+    """Session risk assessment"""
+    risk_level: Optional[str] = Field(None, max_length=20)        # none, low, moderate, high, imminent
+    suicidal_ideation: Optional[str] = Field(None, max_length=50) # none, passive, active_without_plan, active_with_plan
+    self_harm: Optional[bool] = None
+    homicidal_ideation: Optional[bool] = None
+    protective_factors: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
+class HomeworkItem(BaseModel):
+    task: str
+    completed: bool = False
+
+
+class Homework(BaseModel):
+    """Homework assigned / reviewed"""
+    items: List[HomeworkItem] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
+class Planning(BaseModel):
+    """Session planning / treatment goals"""
+    goals: List[str] = Field(default_factory=list)
+    interventions: List[str] = Field(default_factory=list)
+    next_session_focus: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class SessionCreate(SessionBase):
     """Model for creating a new session"""
     notes: Optional[str] = None
     tags: Optional[List[str]] = Field(default_factory=list)
     analysis: Optional[Dict[str, Any]] = None
+    client_presentation: Optional[ClientPresentation] = None
+    risk_assessment: Optional[RiskAssessment] = None
+    homework: Optional[Homework] = None
+    planning: Optional[Planning] = None
+    private_notes: Optional[str] = None
 
 
 class SessionUpdate(BaseModel):
@@ -134,6 +181,24 @@ class SessionUpdate(BaseModel):
     transcript: Optional[str] = None
     summary: Optional[str] = None
     analysis: Optional[Dict[str, Any]] = None
+    client_presentation: Optional[ClientPresentation] = None
+    risk_assessment: Optional[RiskAssessment] = None
+    homework: Optional[Homework] = None
+    planning: Optional[Planning] = None
+    private_notes: Optional[str] = None
+
+
+def _parse_json_field(v: Any) -> Optional[Any]:
+    """Helper to parse a JSON string field into a dict/object."""
+    if isinstance(v, str):
+        if not v:
+            return None
+        try:
+            import json
+            return json.loads(v)
+        except Exception:
+            return None
+    return v
 
 
 class SessionResponse(SessionBase):
@@ -144,8 +209,26 @@ class SessionResponse(SessionBase):
     analysis: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
     tags: List[str] = []
+    client_presentation: Optional[ClientPresentation] = None
+    risk_assessment: Optional[RiskAssessment] = None
+    homework: Optional[Homework] = None
+    planning: Optional[Planning] = None
+    private_notes: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    @field_validator("analysis", "client_presentation", "risk_assessment", "homework", "planning", mode="before")
+    @classmethod
+    def parse_json_fields(cls, v):
+        if isinstance(v, str):
+            if not v:
+                return None
+            try:
+                import json
+                return json.loads(v)
+            except Exception:
+                return None
+        return v
 
     class Config:
         from_attributes = True
@@ -378,6 +461,7 @@ class SchoolChatRequest(BaseModel):
     school: PsychologicalSchool
     messages: List[ChatMessage]
     client_context: Optional[str] = None
+    session_ids: Optional[List[str]] = None
 
 
 class ChatResponse(BaseModel):

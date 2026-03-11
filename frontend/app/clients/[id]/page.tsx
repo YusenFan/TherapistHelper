@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { apiClient, type ClientResponse, type ClientData } from '@/lib/api'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { apiClient, type ClientResponse, type ClientData, type Session } from '@/lib/api'
 import ClientChat from '@/components/ClientChat'
 
 interface ClientProfileProps {
@@ -29,10 +29,14 @@ interface FormErrors {
 
 export default function ClientProfile({ params }: ClientProfileProps) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('overview')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview')
   const [clientData, setClientData] = useState<ClientResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [sessionsError, setSessionsError] = useState<string | null>(null)
   
   // Edit form state
   const [editMode, setEditMode] = useState(false)
@@ -80,6 +84,24 @@ export default function ClientProfile({ params }: ClientProfileProps) {
       setLoading(false)
     }
   }, [params.id])
+
+  useEffect(() => {
+    if (activeTab === 'sessions' && params.id) {
+      const fetchSessions = async () => {
+        try {
+          setSessionsLoading(true)
+          setSessionsError(null)
+          const all = await apiClient.getSessions()
+          setSessions(all.filter(s => s.client_id === params.id))
+        } catch (err) {
+          setSessionsError(err instanceof Error ? err.message : 'Failed to load sessions')
+        } finally {
+          setSessionsLoading(false)
+        }
+      }
+      fetchSessions()
+    }
+  }, [activeTab, params.id])
 
   const genderOptions = [
     { value: 'female', label: 'Female' },
@@ -486,14 +508,16 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                 </div>
               </div>
 
-              {clientData.background && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-therapy-navy mb-4">Background Information</h3>
-                  <div className="prose max-w-none">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Background Information</h3>
+                <div className="prose max-w-none">
+                  {clientData.background ? (
                     <p className="text-therapy-navy leading-relaxed whitespace-pre-wrap">{clientData.background}</p>
-                  </div>
+                  ) : (
+                    <p className="text-gray-400 italic">No background information available</p>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Summary Stats */}
@@ -523,15 +547,61 @@ export default function ClientProfile({ params }: ClientProfileProps) {
         )}
 
         {activeTab === 'sessions' && (
-          <div className="text-center py-12">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <h3 className="text-lg font-semibold text-therapy-navy mb-2">No Sessions Yet</h3>
-            <p className="text-gray-600 mb-4">This client hasn't had any therapy sessions yet.</p>
-            <button className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
-              Schedule First Session
-            </button>
+          <div>
+            {sessionsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-therapy-coral"></div>
+                <span className="ml-3 text-therapy-navy">Loading sessions...</span>
+              </div>
+            ) : sessionsError ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-red-800">{sessionsError}</p>
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                <h3 className="text-lg font-semibold text-therapy-navy mb-2">No Sessions Yet</h3>
+                <p className="text-gray-600 mb-4">This client hasn't had any therapy sessions yet.</p>
+                <button
+                  onClick={() => router.push(`/sessions/new?client_id=${params.id}`)}
+                  className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium"
+                >
+                  Schedule First Session
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => router.push(`/sessions/${session.id}`)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center space-x-3 mb-1">
+                          <h4 className="text-base font-semibold text-therapy-navy">
+                            {new Date(session.session_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                          </h4>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-therapy-coral bg-opacity-10 text-therapy-coral capitalize">
+                            {session.session_type}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500">{session.duration_minutes} minutes</p>
+                        {session.summary && (
+                          <p className="mt-2 text-sm text-gray-700 line-clamp-2">{session.summary}</p>
+                        )}
+                      </div>
+                      <svg className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -688,43 +758,6 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                       )}
                     </fieldset>
                   </div>
-                </div>
-              </div>
-
-              {/* Background Information Panel */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Background Information</h3>
-
-                <div className="space-y-4">
-                  {editMode ? (
-                    <>
-                      <textarea
-                        rows={8}
-                        value={formData.background}
-                        onChange={(e) => {
-                          if (e.target.value.length <= maxBackgroundLength) {
-                            handleInputChange('background', e.target.value)
-                          }
-                        }}
-                        placeholder="Enter relevant history, presenting concerns, referral source, etc."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent resize-none"
-                      />
-                      
-                      <div className="flex items-center justify-between text-sm">
-                        <span className={`${maxBackgroundLength - formData.background.length < 100 ? 'text-red-500' : 'text-gray-500'}`}>
-                          {maxBackgroundLength - formData.background.length} characters remaining
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="prose max-w-none">
-                      {clientData.background ? (
-                        <p className="text-therapy-navy leading-relaxed whitespace-pre-wrap">{clientData.background}</p>
-                      ) : (
-                        <p className="text-gray-400 italic">No background information available</p>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
 

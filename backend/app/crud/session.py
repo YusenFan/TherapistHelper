@@ -17,6 +17,16 @@ class SessionCRUD:
         """Create a new session"""
         document_id = str(uuid.uuid4())
 
+        def _dump(val):
+            """Serialize a pydantic model or dict to JSON string for Appwrite longtext."""
+            if val is None:
+                return ""
+            if hasattr(val, "model_dump"):
+                return json.dumps(val.model_dump())
+            if isinstance(val, dict):
+                return json.dumps(val)
+            return str(val)
+
         document_data = {
             "client_id": obj_in.client_id,
             "session_date": obj_in.session_date.isoformat() if hasattr(obj_in.session_date, 'isoformat') else str(obj_in.session_date),
@@ -26,7 +36,12 @@ class SessionCRUD:
             "tags": obj_in.tags or [],
             "transcript": "",
             "summary": "",
-            "analysis": json.dumps(obj_in.analysis) if obj_in.analysis else "",
+            "analysis": _dump(obj_in.analysis),
+            "client_presentation": _dump(obj_in.client_presentation),
+            "risk_assessment": _dump(obj_in.risk_assessment),
+            "homework": _dump(obj_in.homework),
+            "planning": _dump(obj_in.planning),
+            "private_notes": obj_in.private_notes or "",
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         }
@@ -89,9 +104,12 @@ class SessionCRUD:
             # Prepare update data
             update_data = obj_in.model_dump(exclude_unset=True)
 
-            # Serialize analysis dict to JSON string (stored as longtext in Appwrite)
-            if "analysis" in update_data and isinstance(update_data["analysis"], dict):
-                update_data["analysis"] = json.dumps(update_data["analysis"])
+            # Serialize JSON fields (stored as longtext in Appwrite)
+            _json_fields = ("analysis", "client_presentation", "risk_assessment", "homework", "planning")
+            for field in _json_fields:
+                if field in update_data and update_data[field] is not None:
+                    if isinstance(update_data[field], (dict, list)):
+                        update_data[field] = json.dumps(update_data[field])
 
             # Update timestamp
             update_data["updated_at"] = datetime.utcnow().isoformat()

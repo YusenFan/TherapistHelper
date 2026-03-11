@@ -173,13 +173,11 @@ export default function Dashboard() {
                           {session.session_type}
                         </span>
                       </div>
-                      <p className="text-gray-600 leading-relaxed">
-                        {session.summary || session.notes || 'No notes available'}
-                      </p>
+            
                     </div>
                     <div className="ml-6 flex space-x-2">
                       <Link
-                        href={`/session-analysis?session=${session.id}`}
+                        href={`/sessions/${session.id}`}
                         className="px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors text-sm font-medium"
                       >
                         View Details
