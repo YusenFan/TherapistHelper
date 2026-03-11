@@ -1,6 +1,6 @@
 # TherapistHelper
 
-**Therapist Helper AI: AI-Powered Session Assistant for Therapists**
+**TheraFlow: AI-Powered Session Assistant for Therapists**
 
 TherapistHelper is a web application designed to help therapists enhance client engagement by minimizing time spent on note-taking and administrative tasks. By leveraging AI, the app automates transcription, generates valuable insights, and helps prepare for future sessions.
 

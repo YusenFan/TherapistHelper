@@ -1,4 +1,8 @@
+'use client'
+
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth-context'
 
 // Mock data for demonstration
 const recentSessions = [
@@ -13,7 +17,7 @@ const recentSessions = [
   {
     id: 2,
     clientName: "Sarah Johnson",
-    date: "July 4, 2025", 
+    date: "July 4, 2025",
     duration: "45 min",
     summary: "Continued cognitive behavioral therapy for anxiety. Client completed homework assignments successfully.",
     mood: "Stable"
@@ -29,6 +33,21 @@ const recentSessions = [
 ]
 
 export default function Dashboard() {
+  const { user } = useAuth()
+  const [totalClients, setTotalClients] = useState<number | null>(null)
+  const [totalHours, setTotalHours] = useState<number | null>(null)
+
+  useEffect(() => {
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    Promise.all([
+      fetch(`${API}/api/v1/clients/stats/count`).then(r => r.json()).catch(() => null),
+      fetch(`${API}/api/v1/sessions/stats/totals`).then(r => r.json()).catch(() => null),
+    ]).then(([clientStats, sessionStats]) => {
+      if (clientStats) setTotalClients(clientStats.total_clients)
+      if (sessionStats) setTotalHours(sessionStats.total_hours)
+    })
+  }, [])
+
   return (
     <div className="min-h-screen">
       {/* Page Header */}
@@ -37,7 +56,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-therapy-navy">Dashboard</h1>
-              <p className="text-gray-600 mt-1 text-lg">Welcome back, Dr. Smith</p>
+              <p className="text-gray-600 mt-1 text-lg">Welcome back, {user?.name || user?.email || 'Doctor'}</p>
             </div>
             <div className="flex items-center space-x-4">
               <div className="relative">
@@ -56,57 +75,63 @@ export default function Dashboard() {
       </div>
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-therapy-coral bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-therapy-coral" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Clients</p>
+                <p className="text-3xl font-bold text-therapy-navy">
+                  {totalClients === null ? '—' : totalClients}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-therapy-blue bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-therapy-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Hours</p>
+                <p className="text-3xl font-bold text-therapy-navy">
+                  {totalHours === null ? '—' : totalHours}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Quick Actions Cards */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-therapy-navy mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Link href="/clients/new" className="group">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Link href="/sessions/new" className="group">
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-therapy-coral transition-all duration-200">
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-therapy-coral bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
                     <svg className="w-6 h-6 text-therapy-coral" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-therapy-navy group-hover:text-therapy-coral transition-colors">New Client</h3>
-                    <p className="text-gray-600 text-sm">Create a new client profile</p>
+                    <h3 className="text-lg font-semibold text-therapy-navy group-hover:text-therapy-coral transition-colors">New Session</h3>
+                    <p className="text-gray-600 text-sm">Start a new therapy session</p>
                   </div>
                 </div>
               </div>
             </Link>
 
-            <Link href="/upload" className="group">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-therapy-blue transition-all duration-200">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-therapy-blue bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
-                    <svg className="w-6 h-6 text-therapy-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-therapy-navy group-hover:text-therapy-blue transition-colors">Upload Transcript</h3>
-                    <p className="text-gray-600 text-sm">Upload session recording</p>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <Link href="/agenda" className="group">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-therapy-green transition-all duration-200">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-therapy-green bg-opacity-20 rounded-lg flex items-center justify-center mr-4">
-                    <svg className="w-6 h-6 text-therapy-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-therapy-navy group-hover:text-therapy-green transition-colors">Next Session Agenda</h3>
-                    <p className="text-gray-600 text-sm">AI-generated session prep</p>
-                  </div>
-                </div>
-              </div>
-            </Link>
+           
           </div>
         </div>
 
@@ -118,7 +143,7 @@ export default function Dashboard() {
               View all sessions →
             </Link>
           </div>
-          
+
           <div className="space-y-4">
             {recentSessions.map((session) => (
               <div key={session.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
@@ -130,8 +155,8 @@ export default function Dashboard() {
                       <span className="text-sm text-gray-500">•</span>
                       <span className="text-sm text-gray-500">{session.duration}</span>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        session.mood === 'Improving' 
-                          ? 'bg-therapy-green bg-opacity-20 text-therapy-green' 
+                        session.mood === 'Improving'
+                          ? 'bg-therapy-green bg-opacity-20 text-therapy-green'
                           : session.mood === 'Stable'
                           ? 'bg-therapy-blue bg-opacity-20 text-therapy-blue'
                           : 'bg-gray-100 text-gray-600'
@@ -142,7 +167,7 @@ export default function Dashboard() {
                     <p className="text-gray-600 leading-relaxed">{session.summary}</p>
                   </div>
                   <div className="ml-6 flex space-x-2">
-                    <Link 
+                    <Link
                       href={`/session-analysis?session=${session.id}`}
                       className="px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors text-sm font-medium"
                     >
@@ -160,4 +185,4 @@ export default function Dashboard() {
       </main>
     </div>
   )
-} 
+}

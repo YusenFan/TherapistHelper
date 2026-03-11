@@ -25,13 +25,13 @@ class NoteCRUD:
             "updated_at": datetime.utcnow().isoformat()
         }
 
-        result = await db.create_note(document_data)
+        result = db.create_note(document_data)
         return result
 
     async def get(self, note_id: str) -> Optional[Dict[str, Any]]:
         """Get note by ID"""
         try:
-            return await db.get_document(
+            return db.get_document(
                 collection_id=settings.COLLECTION_NOTES,
                 document_id=note_id
             )
@@ -45,7 +45,7 @@ class NoteCRUD:
     ) -> List[Dict[str, Any]]:
         """Get all notes for a client"""
         try:
-            result = await db.get_client_notes(client_id)
+            result = db.get_client_notes(client_id)
             notes = result.get("documents", [])
             return notes[:limit] if limit else notes
         except Exception:
@@ -67,7 +67,7 @@ class NoteCRUD:
             if note_type:
                 queries.append(f'equal("note_type", "{note_type}")')
 
-            result = await db.list_documents(
+            result = db.list_documents(
                 collection_id=settings.COLLECTION_NOTES,
                 queries=queries if queries else None
             )
@@ -98,7 +98,7 @@ class NoteCRUD:
             update_data["updated_at"] = datetime.utcnow().isoformat()
 
             # Update in Appwrite
-            result = await db.update_document(
+            result = db.update_document(
                 collection_id=settings.COLLECTION_NOTES,
                 document_id=note_id,
                 document_data=update_data
@@ -112,7 +112,7 @@ class NoteCRUD:
     async def delete(self, note_id: str) -> bool:
         """Delete note by ID"""
         try:
-            await db.delete_document(
+            db.delete_document(
                 collection_id=settings.COLLECTION_NOTES,
                 document_id=note_id
             )
@@ -131,7 +131,7 @@ class NoteCRUD:
                 f'equal("client_id", "{client_id}")',
                 f'search("{query}")'
             ]
-            result = await db.list_documents(
+            result = db.list_documents(
                 collection_id=settings.COLLECTION_NOTES,
                 queries=queries
             )

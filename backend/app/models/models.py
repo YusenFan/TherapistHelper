@@ -5,6 +5,7 @@ Used with Appwrite database
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from enum import Enum
 import uuid
 
 
@@ -28,8 +29,8 @@ class ClientCreate(ClientBase):
     """Model for creating a new client"""
     full_name: str = Field(..., min_length=1, max_length=100)
     date_of_birth: Optional[str] = Field(None, max_length=20)  # ISO format
-    background: Optional[str] = Field(None, max_length=5000)
-    notes: Optional[str] = Field(None, max_length=5000)
+    background: Optional[str] = None
+    notes: Optional[str] = None
     tags: Optional[List[str]] = Field(default_factory=list)
 
 
@@ -42,8 +43,8 @@ class ClientUpdate(BaseModel):
     race: Optional[str] = Field(None, max_length=50)
     occupation: Optional[str] = Field(None, max_length=100)
     date_of_birth: Optional[str] = Field(None, max_length=20)
-    background: Optional[str] = Field(None, max_length=5000)
-    notes: Optional[str] = Field(None, max_length=5000)
+    background: Optional[str] = None
+    notes: Optional[str] = None
     phone: Optional[str] = Field(None, max_length=20)
     email: Optional[str] = Field(None, max_length=100)
     status: Optional[str] = Field(None, max_length=20)
@@ -53,6 +54,7 @@ class ClientUpdate(BaseModel):
 class ClientResponse(ClientBase):
     """Model for client response (including encrypted fields)"""
     id: str
+    full_name: Optional[str] = None
     full_name_encrypted: str
     background_encrypted: Optional[str] = None
     date_of_birth: Optional[str] = None
@@ -60,8 +62,8 @@ class ClientResponse(ClientBase):
     phone: Optional[str] = None
     email: Optional[str] = None
     tags: List[str] = []
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -118,15 +120,16 @@ class SessionBase(BaseModel):
 
 class SessionCreate(SessionBase):
     """Model for creating a new session"""
-    notes: Optional[str] = Field(None, max_length=5000)
+    notes: Optional[str] = None
     tags: Optional[List[str]] = Field(default_factory=list)
+    analysis: Optional[Dict[str, Any]] = None
 
 
 class SessionUpdate(BaseModel):
     """Model for updating a session"""
     duration_minutes: Optional[int] = Field(None, ge=1, le=180)
     session_type: Optional[str] = Field(None, max_length=20)
-    notes: Optional[str] = Field(None, max_length=5000)
+    notes: Optional[str] = None
     tags: Optional[List[str]] = None
     transcript: Optional[str] = None
     summary: Optional[str] = None
@@ -141,8 +144,8 @@ class SessionResponse(SessionBase):
     analysis: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
     tags: List[str] = []
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -166,12 +169,32 @@ class TranscriptResponse(BaseModel):
     transcript_text: str
     duration: float
     language: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
 
 # ============================================================================
 # Analysis Models
 # ============================================================================
+
+class IntakeAnalysisRequest(BaseModel):
+    """Request model for client intake analysis"""
+    background: str = Field(..., min_length=1)
+    name: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+
+
+class IntakeAnalysisResponse(BaseModel):
+    """Structured 8-field clinical intake assessment"""
+    presenting_problem: str
+    clinical_symptoms: str
+    diagnosis: str
+    case_formulation: str
+    risk_level: str
+    functioning_severity: str
+    personality_patterns: str
+    strengths_resources: str
+
 
 class AnalysisRequest(BaseModel):
     """Model for AI analysis request"""
@@ -238,13 +261,13 @@ class NoteBase(BaseModel):
 
 class NoteCreate(NoteBase):
     """Model for creating a note"""
-    content: str = Field(..., min_length=1, max_length=5000)
+    content: str = Field(..., min_length=1)
     tags: Optional[List[str]] = Field(default_factory=list)
 
 
 class NoteUpdate(BaseModel):
     """Model for updating a note"""
-    content: Optional[str] = Field(None, min_length=1, max_length=5000)
+    content: Optional[str] = Field(None, min_length=1)
     tags: Optional[List[str]] = None
 
 
@@ -253,8 +276,8 @@ class NoteResponse(NoteBase):
     id: str
     content: str
     tags: List[str] = []
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -272,7 +295,7 @@ class AttendanceRecord(BaseModel):
     scheduled_date: datetime
     attended: bool
     cancellation_reason: Optional[str] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
 
 # ============================================================================
@@ -290,3 +313,74 @@ class ClientTagsResponse(BaseModel):
     """Response with all client tags"""
     tags: List[str]
     total_clients: int
+
+
+# ============================================================================
+# Note Conversion Models
+# ============================================================================
+
+class NoteConvertRequest(BaseModel):
+    """Request to convert free-text notes to a structured clinical format"""
+    free_text: str = Field(..., min_length=1)
+    target_format: str = Field(..., description="'BIRP', 'DAP', or 'SOAP'")
+
+
+class NoteConvertResponse(BaseModel):
+    """Structured note fields returned by AI conversion"""
+    behavior: Optional[str] = None
+    intervention: Optional[str] = None
+    response: Optional[str] = None
+    data: Optional[str] = None
+    subjective: Optional[str] = None
+    objective: Optional[str] = None
+    assessment: Optional[str] = None
+    plan: Optional[str] = None
+
+
+# ============================================================================
+# Chat Models
+# ============================================================================
+
+class ChatMode(str, Enum):
+    INVESTIGATE = "investigate"
+    ROLE_PLAY = "role_play"
+    SUPERVISOR = "supervisor"
+
+
+class PsychologicalSchool(str, Enum):
+    CBT = "CBT"
+    PSYCHOANALYTIC = "Psychoanalytic"
+    HUMANISTIC = "Humanistic"
+    EXISTENTIAL = "Existential"
+    GESTALT = "Gestalt"
+    ACT = "ACT"
+    DBT = "DBT"
+    NARRATIVE = "Narrative"
+    SFBT = "SFBT"
+    ADLERIAN = "Adlerian"
+    BEHAVIORAL = "Behavioral"
+    IPT = "IPT"
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ClientChatRequest(BaseModel):
+    client_id: str
+    mode: ChatMode
+    messages: List[ChatMessage]
+    session_ids: Optional[List[str]] = None
+
+
+class SchoolChatRequest(BaseModel):
+    school: PsychologicalSchool
+    messages: List[ChatMessage]
+    client_context: Optional[str] = None
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    mode: Optional[str] = None
+    school: Optional[str] = None

@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { apiClient, type ClientResponse, type ClientData } from '@/lib/api'
+import ClientChat from '@/components/ClientChat'
 
 interface ClientProfileProps {
   params: {
@@ -26,6 +28,7 @@ interface FormErrors {
 }
 
 export default function ClientProfile({ params }: ClientProfileProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
   const [clientData, setClientData] = useState<ClientResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -51,7 +54,7 @@ export default function ClientProfile({ params }: ClientProfileProps) {
       try {
         setLoading(true)
         setError(null)
-        const client = await apiClient.getClient(parseInt(params.id))
+        const client = await apiClient.getClient(params.id)
         setClientData(client)
         
         // Initialize form data with client data
@@ -70,7 +73,7 @@ export default function ClientProfile({ params }: ClientProfileProps) {
       }
     }
 
-    if (params.id && !isNaN(parseInt(params.id))) {
+    if (params.id) {
       fetchClient()
     } else {
       setError('Invalid client ID')
@@ -82,8 +85,6 @@ export default function ClientProfile({ params }: ClientProfileProps) {
     { value: 'female', label: 'Female' },
     { value: 'male', label: 'Male' },
     { value: 'non-binary', label: 'Non-binary' },
-    { value: 'prefer-not-to-say', label: 'Prefer not to say' },
-    { value: 'other', label: 'Other...' }
   ]
 
   // Form validation
@@ -220,6 +221,7 @@ export default function ClientProfile({ params }: ClientProfileProps) {
     { id: 'overview', name: 'Overview', icon: 'overview' },
     { id: 'sessions', name: 'Sessions', icon: 'sessions' },
     { id: 'insights', name: 'AI Insights', icon: 'insights' },
+    { id: 'chat', name: 'Chat', icon: 'chat' },
     { id: 'edit', name: 'Edit Profile', icon: 'edit' }
   ]
 
@@ -241,6 +243,12 @@ export default function ClientProfile({ params }: ClientProfileProps) {
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+        )
+      case 'chat':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
         )
       case 'edit':
@@ -418,8 +426,11 @@ export default function ClientProfile({ params }: ClientProfileProps) {
               </div>
             </div>
             <div className="flex space-x-3">
-              <button className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
-                Schedule Session
+              <button
+                onClick={() => router.push(`/sessions/new?client_id=${params.id}`)}
+                className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium"
+              >
+                New Session
               </button>
  
             </div>
@@ -542,6 +553,10 @@ export default function ClientProfile({ params }: ClientProfileProps) {
               Learn More
             </button>
           </div>
+        )}
+
+        {activeTab === 'chat' && (
+          <ClientChat clientId={params.id} />
         )}
 
         {activeTab === 'edit' && (

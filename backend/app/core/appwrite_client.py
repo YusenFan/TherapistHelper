@@ -56,11 +56,28 @@ class AppwriteDB:
 
             return result
         except Exception as e:
+            if "Appwrite" in str(e):
+                raise
             # Response wasn't JSON
             raise Exception(
                 f"Appwrite {operation} failed: "
                 f"Status {response.status_code}, Response: {response.text[:200]}"
             )
+
+    def _normalize_document(self, doc: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize Appwrite document fields to standard names"""
+        if not doc:
+            return doc
+        # Map $id -> id
+        if '$id' in doc and 'id' not in doc:
+            doc['id'] = doc['$id']
+        # Map $createdAt -> created_at (fallback if created_at is missing/None)
+        if not doc.get('created_at') and '$createdAt' in doc:
+            doc['created_at'] = doc['$createdAt']
+        # Map $updatedAt -> updated_at
+        if not doc.get('updated_at') and '$updatedAt' in doc:
+            doc['updated_at'] = doc['$updatedAt']
+        return doc
 
     # ==================== CREATE OPERATIONS ====================
 
@@ -71,22 +88,21 @@ class AppwriteDB:
         row_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Create a new row in a table"""
-        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}"
+        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}/documents"
+
+        payload = {
+            "documentId": row_id or "unique()",
+            "data": column_data
+        }
 
         response = self._make_request(
             method="POST",
             url=url,
-            json=column_data
+            json=payload
         )
 
         result = self._handle_response(response, "create")
-
-        # Add system fields if not present
-        if result and result.get('$id'):
-            result['created_at'] = datetime.utcnow().isoformat()
-            result['updated_at'] = datetime.utcnow().isoformat()
-
-        return result
+        return self._normalize_document(result)
 
     def upsert_row(
         self,
@@ -95,21 +111,21 @@ class AppwriteDB:
         row_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Create or update a row (upsert)"""
-        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}"
+        url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}/documents"
+
+        payload = {
+            "documentId": row_id or "unique()",
+            "data": column_data
+        }
 
         response = self._make_request(
             method="POST",
             url=url,
-            json=column_data
+            json=payload
         )
 
         result = self._handle_response(response, "upsert")
-
-        # Add system fields
-        if result and result.get('$id'):
-            result['updated_at'] = datetime.utcnow().isoformat()
-
-        return result
+        return self._normalize_document(result)
 
     # ==================== LIST/QUERY OPERATIONS ====================
 
@@ -134,7 +150,11 @@ class AppwriteDB:
             params=params
         )
 
-        return self._handle_response(response, "list")
+        result = self._handle_response(response, "list")
+        # Normalize each document in the list
+        if result and 'documents' in result:
+            result['documents'] = [self._normalize_document(d) for d in result['documents']]
+        return result
 
     def search_rows(
         self,
@@ -177,7 +197,7 @@ class AppwriteDB:
         if response.status_code == 404:
             return None
 
-        return self._handle_response(response, "get")
+        return self._normalize_document(self._handle_response(response, "get"))
 
     # ==================== UPDATE OPERATIONS ====================
 
@@ -197,12 +217,7 @@ class AppwriteDB:
         )
 
         result = self._handle_response(response, "update")
-
-        # Add updated timestamp
-        if result:
-            result['updated_at'] = datetime.utcnow().isoformat()
-
-        return result
+        return self._normalize_document(result)
 
     # ==================== DELETE OPERATIONS ====================
 
@@ -268,6 +283,82 @@ class AppwriteDB:
         """Count total clients"""
         result = self.get_clients()
         return result.get('total', 0)
+
+    # ==================== GENERIC DOCUMENT METHODS ====================
+
+    def list_documents(
+        self,
+        collection_id: str,
+        queries: Optional[List[str]] = None,
+        limit: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Generic list documents for any collection"""
+        return self.list_rows(collection_id, queries, limit)
+
+    def get_document(
+        self,
+        collection_id: str,
+        document_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Generic get document by ID"""
+        return self.get_row(collection_id, document_id)
+
+    def update_document(
+        self,
+        collection_id: str,
+        document_id: str,
+        document_data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Generic update document"""
+        return self.update_row(collection_id, document_id, document_data)
+
+    def delete_document(
+        self,
+        collection_id: str,
+        document_id: str
+    ) -> bool:
+        """Generic delete document"""
+        return self.delete_row(collection_id, document_id)
+
+    # ==================== CLIENTS ALIASES ====================
+
+    def list_clients(
+        self,
+        queries: Optional[List[str]] = None,
+        limit: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """List clients (alias for get_clients with queries support)"""
+        return self.list_rows(settings.COLLECTION_CLIENTS, queries, limit)
+
+    # ==================== SESSION METHODS ====================
+
+    def create_session(self, session_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new session"""
+        return self.create_row(settings.COLLECTION_SESSIONS, session_data)
+
+    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Get a session by ID"""
+        return self.get_row(settings.COLLECTION_SESSIONS, session_id)
+
+    def get_client_sessions(self, client_id: str) -> Dict[str, Any]:
+        """Get all sessions for a client"""
+        return self.list_rows(
+            settings.COLLECTION_SESSIONS,
+            [f'equal("client_id", ["{client_id}"])']
+        )
+
+    # ==================== NOTE METHODS ====================
+
+    def create_note(self, note_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new note"""
+        return self.create_row(settings.COLLECTION_NOTES, note_data)
+
+    def get_client_notes(self, client_id: str) -> Dict[str, Any]:
+        """Get all notes for a client"""
+        return self.list_rows(
+            settings.COLLECTION_NOTES,
+            [f'equal("client_id", ["{client_id}"])']
+        )
 
 
 # Global Appwrite database instance

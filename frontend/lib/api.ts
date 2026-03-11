@@ -19,7 +19,32 @@ export interface ClientDetail extends ClientListItem {
   diagnosis?: string
   medications?: string
   notes?: string
+  background?: string
   updated_at?: string
+}
+
+export interface ClientData {
+  full_name: string
+  age: number
+  gender: string
+  custom_gender?: string
+  background?: string
+  notes?: string
+  occupation?: string
+  email?: string
+  phone?: string
+  status?: string
+}
+
+export interface IntakeAnalysis {
+  presenting_problem: string
+  clinical_symptoms: string
+  diagnosis: string
+  case_formulation: string
+  risk_level: string
+  functioning_severity: string
+  personality_patterns: string
+  strengths_resources: string
 }
 
 export interface Session {
@@ -29,8 +54,9 @@ export interface Session {
   duration_minutes: number
   session_type: string
   notes?: string
-  transcript_path?: string
-  ai_insights?: string
+  transcript?: string
+  summary?: string
+  analysis?: Record<string, unknown>
   created_at: string
   updated_at?: string
 }
@@ -42,6 +68,20 @@ export interface Note {
   created_at: string
   updated_at?: string
 }
+
+export interface ChatMessage {
+  role: string
+  content: string
+}
+
+export interface ChatResponse {
+  reply: string
+  mode?: string
+  school?: string
+}
+
+// Alias used by client detail page
+export type ClientResponse = ClientDetail
 
 export interface Attendance {
   id: string
@@ -95,30 +135,112 @@ class ApiClient {
   }
 
   async getClient(id: string): Promise<ClientDetail> {
-    return this.request<ClientDetail>(`/api/v1/clients/${id}/`)
+    return this.request<ClientDetail>(`/api/v1/clients/${id}`)
   }
 
-  async createClient(data: Partial<ClientDetail>): Promise<ClientDetail> {
+  async createClient(data: ClientData | Partial<ClientDetail>): Promise<ClientDetail> {
     return this.request<ClientDetail>('/api/v1/clients/', {
       method: 'POST',
       body: JSON.stringify(data),
     })
   }
 
+  async analyzeIntake(data: { background: string; name?: string; age?: number; gender?: string }): Promise<IntakeAnalysis> {
+    return this.request<IntakeAnalysis>('/api/v1/ai/intake-analysis', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async convertNoteFormat(
+    freeText: string,
+    targetFormat: 'BIRP' | 'DAP' | 'SOAP'
+  ): Promise<{
+    behavior?: string; intervention?: string; response?: string;
+    data?: string; subjective?: string; objective?: string;
+    assessment?: string; plan?: string;
+  }> {
+    return this.request('/api/v1/ai/convert-notes', {
+      method: 'POST',
+      body: JSON.stringify({ free_text: freeText, target_format: targetFormat }),
+    })
+  }
+
+  async speechToText(audioBlob: Blob, filename = 'recording.webm'): Promise<string> {
+    const url = `${this.baseUrl}/api/v1/ai/speech-to-text`
+    const formData = new FormData()
+    formData.append('file', audioBlob, filename)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const headers: HeadersInit = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    const response = await fetch(url, { method: 'POST', headers, body: formData })
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(error || `HTTP ${response.status}`)
+    }
+    const result = await response.json()
+    return result.text as string
+  }
+
   async updateClient(id: string, data: Partial<ClientDetail>): Promise<ClientDetail> {
-    return this.request<ClientDetail>(`/api/v1/clients/${id}/`, {
+    return this.request<ClientDetail>(`/api/v1/clients/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     })
   }
 
   async deleteClient(id: string): Promise<void> {
-    return this.request<void>(`/api/v1/clients/${id}/`, {
+    return this.request<void>(`/api/v1/clients/${id}`, {
       method: 'DELETE',
     })
   }
 
+  // Chat
+  async clientChat(
+    clientId: string,
+    mode: string,
+    messages: ChatMessage[],
+    sessionIds?: string[]
+  ): Promise<ChatResponse> {
+    return this.request<ChatResponse>('/api/v1/ai/chat/client', {
+      method: 'POST',
+      body: JSON.stringify({
+        client_id: clientId,
+        mode,
+        messages,
+        session_ids: sessionIds,
+      }),
+    })
+  }
+
+  async schoolChat(
+    school: string,
+    messages: ChatMessage[],
+    clientContext?: string
+  ): Promise<ChatResponse> {
+    return this.request<ChatResponse>('/api/v1/ai/chat/school', {
+      method: 'POST',
+      body: JSON.stringify({
+        school,
+        messages,
+        client_context: clientContext,
+      }),
+    })
+  }
+
+  async getClientSessions(clientId: string): Promise<Session[]> {
+    return this.request<Session[]>(`/api/v1/sessions/client/${clientId}`)
+  }
+
   // Sessions
+  async getLatestClientSession(clientId: string): Promise<Session | null> {
+    try {
+      return await this.request<Session>(`/api/v1/sessions/client/${clientId}/latest`)
+    } catch {
+      return null
+    }
+  }
+
   async getSessions(clientId?: string): Promise<Session[]> {
     const endpoint = clientId
       ? `/api/v1/clients/${clientId}/sessions/`
@@ -127,10 +249,15 @@ class ApiClient {
   }
 
   async getSession(id: string): Promise<Session> {
-    return this.request<Session>(`/api/v1/sessions/${id}/`)
+    return this.request<Session>(`/api/v1/sessions/${id}`)
   }
 
-  async createSession(data: Partial<Session>): Promise<Session> {
+  async createSession(data: Partial<Session> & {
+    client_id: string
+    session_date: string
+    duration_minutes: number
+    session_type: string
+  }): Promise<Session> {
     return this.request<Session>('/api/v1/sessions/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -138,14 +265,14 @@ class ApiClient {
   }
 
   async updateSession(id: string, data: Partial<Session>): Promise<Session> {
-    return this.request<Session>(`/api/v1/sessions/${id}/`, {
+    return this.request<Session>(`/api/v1/sessions/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     })
   }
 
   async deleteSession(id: string): Promise<void> {
-    return this.request<void>(`/api/v1/sessions/${id}/`, {
+    return this.request<void>(`/api/v1/sessions/${id}`, {
       method: 'DELETE',
     })
   }
@@ -188,14 +315,14 @@ class ApiClient {
   }
 
   async updateNote(id: string, content: string): Promise<Note> {
-    return this.request<Note>(`/api/v1/notes/${id}/`, {
+    return this.request<Note>(`/api/v1/notes/${id}`, {
       method: 'PUT',
       body: JSON.stringify({ content }),
     })
   }
 
   async deleteNote(id: string): Promise<void> {
-    return this.request<void>(`/api/v1/notes/${id}/`, {
+    return this.request<void>(`/api/v1/notes/${id}`, {
       method: 'DELETE',
     })
   }

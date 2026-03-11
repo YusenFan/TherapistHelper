@@ -3,6 +3,7 @@ Session CRUD operations for Appwrite
 """
 from typing import List, Optional, Dict, Any
 from app.core.appwrite_client import db
+from app.core.config import settings
 from app.models.models import SessionCreate, SessionUpdate
 from datetime import datetime
 import uuid
@@ -24,18 +25,18 @@ class SessionCRUD:
             "tags": obj_in.tags or [],
             "transcript": "",
             "summary": "",
-            "analysis": {},
+            "analysis": obj_in.analysis or {},
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         }
 
-        result = await db.create_session(document_data)
+        result = db.create_session(document_data)
         return result
 
     async def get(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get session by ID"""
         try:
-            return await db.get_session(session_id)
+            return db.get_session(session_id)
         except Exception:
             return None
 
@@ -46,7 +47,7 @@ class SessionCRUD:
     ) -> List[Dict[str, Any]]:
         """Get all sessions for a client"""
         try:
-            result = await db.get_client_sessions(client_id)
+            result = db.get_client_sessions(client_id)
             sessions = result.get("documents", [])
             return sessions[:limit] if limit else sessions
         except Exception:
@@ -66,7 +67,7 @@ class SessionCRUD:
             # Get all sessions (less common, but possible)
             try:
                 queries = []
-                result = await db.list_documents(
+                result = db.list_documents(
                     collection_id=settings.COLLECTION_SESSIONS,
                     queries=queries
                 )
@@ -82,7 +83,7 @@ class SessionCRUD:
     ) -> Optional[Dict[str, Any]]:
         """Update session with new data"""
         try:
-            existing = await db.get_session(session_id)
+            existing = db.get_session(session_id)
 
             # Prepare update data
             update_data = obj_in.model_dump(exclude_unset=True)
@@ -91,7 +92,7 @@ class SessionCRUD:
             update_data["updated_at"] = datetime.utcnow().isoformat()
 
             # Update in Appwrite
-            result = await db.update_document(
+            result = db.update_document(
                 collection_id=settings.COLLECTION_SESSIONS,
                 document_id=session_id,
                 document_data=update_data
@@ -105,7 +106,7 @@ class SessionCRUD:
     async def delete(self, session_id: str) -> bool:
         """Delete session by ID"""
         try:
-            await db.delete_document(
+            db.delete_document(
                 collection_id=settings.COLLECTION_SESSIONS,
                 document_id=session_id
             )

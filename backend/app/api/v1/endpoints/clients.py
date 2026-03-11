@@ -2,22 +2,45 @@
 Client API endpoints
 """
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, BackgroundTasks
 from app.crud.client import client_crud
+from app.crud.persona import persona_crud
+from app.services.llm import llm_service
 from app.models.models import ClientCreate, ClientUpdate, ClientResponse
+
+
+async def _generate_persona_task(client_id: str, client_info: dict) -> None:
+    """Background task: generate and save a persona for a newly created client."""
+    try:
+        persona_text = await llm_service.generate_client_persona(client_info)
+        persona_crud.save_persona(client_id, persona_text)
+        print(f"[PersonaTask] Generated persona for client {client_id}")
+    except Exception as e:
+        print(f"[PersonaTask] Failed for client {client_id}: {e}")
 
 router = APIRouter()
 
 
 @router.post("/", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
 async def create_client(
-    client_in: ClientCreate
+    client_in: ClientCreate,
+    background_tasks: BackgroundTasks
 ) -> ClientResponse:
     """
     Create a new client profile with encrypted sensitive data.
+    Triggers persona generation as a background task.
     """
     try:
         client = await client_crud.create(obj_in=client_in)
+        client_id = client.get("id") or client.get("$id", "")
+        if client_id:
+            client_info = {
+                "name": client_in.full_name,
+                "age": client_in.age,
+                "gender": client_in.gender,
+                "background": client_in.background or ""
+            }
+            background_tasks.add_task(_generate_persona_task, client_id, client_info)
         return ClientResponse(**client)
     except Exception as e:
         raise HTTPException(
@@ -169,7 +192,7 @@ async def remove_client_tag(
 @router.post("/{client_id}/background", response_model=ClientResponse)
 async def update_client_background(
     client_id: str,
-    background: str = Query(..., min_length=1, max_length=5000)
+    background: str = Query(..., min_length=1)
 ) -> ClientResponse:
     """
     Update client background (usually AI-generated from transcripts).

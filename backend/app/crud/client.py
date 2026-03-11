@@ -17,23 +17,23 @@ class ClientCRUD:
         # Generate document ID
         document_id = str(uuid.uuid4())
 
+        now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.000+00:00')
         # Prepare document data
         document_data = {
             "full_name_encrypted": encryption_manager.encrypt(obj_in.full_name),
-            "background_encrypted": encryption_manager.encrypt(obj_in.background) if obj_in.background else "",
+            "background_encrypted": encryption_manager.encrypt(obj_in.background) if obj_in.background else None,
             "age": obj_in.age,
             "gender": obj_in.gender,
-            "custom_gender": obj_in.custom_gender or "",
-            "race": obj_in.race or "",
-            "occupation": obj_in.occupation or "",
-            "date_of_birth": obj_in.date_of_birth or "",
-            "notes": obj_in.notes or "",
-            "phone": obj_in.phone or "",
-            "email": obj_in.email or "",
+            "custom_gender": obj_in.custom_gender or None,
+            "race": obj_in.race or None,
+            "occupation": obj_in.occupation or None,
+            "date_of_birth": obj_in.date_of_birth or None,
+            "notes": obj_in.notes or None,
+            "phone": obj_in.phone or None,
+            "email": obj_in.email or None,
             "status": obj_in.status,
-            "tags": obj_in.tags or [],
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
+            "created_at": now,
+            "updated_at": now
         }
 
         # Log for debugging
@@ -41,14 +41,14 @@ class ClientCRUD:
         print(f"[DEBUG] Document ID: {document_id}")
 
         # Create in Appwrite
-        result = await db.create_client(document_data)
+        result = db.create_client(document_data)
         print(f"[DEBUG] Create result keys: {list(result.keys()) if isinstance(result, dict) else type(result)}")
         return result
 
     async def get(self, client_id: str) -> Optional[Dict[str, Any]]:
         """Get client by ID"""
         try:
-            result = await db.get_client(client_id)
+            result = db.get_client(client_id)
             # Decrypt sensitive fields
             if "full_name_encrypted" in result:
                 result["full_name"] = encryption_manager.decrypt(result["full_name_encrypted"])
@@ -85,7 +85,7 @@ class ClientCRUD:
                 for tag in tags:
                     queries.append(f'search("tags", "{tag}")')
 
-            result = await db.list_clients(queries if queries else None)
+            result = db.list_clients(queries if queries else None)
             clients = result.get("documents", [])
 
             # Decrypt sensitive fields for each client
@@ -112,7 +112,7 @@ class ClientCRUD:
         """Update client with new data"""
         try:
             # Get existing client
-            existing = await db.get_client(client_id)
+            existing = db.get_client(client_id)
 
             # Prepare update data
             update_data = obj_in.model_dump(exclude_unset=True)
@@ -127,7 +127,7 @@ class ClientCRUD:
             update_data["updated_at"] = datetime.utcnow().isoformat()
 
             # Update in Appwrite
-            result = await db.update_client(client_id, update_data)
+            result = db.update_client(client_id, update_data)
 
             # Decrypt for response
             if "full_name_encrypted" in result:
@@ -143,7 +143,7 @@ class ClientCRUD:
     async def delete(self, client_id: str) -> bool:
         """Delete client by ID"""
         try:
-            await db.delete_client(client_id)
+            db.delete_client(client_id)
             return True
         except Exception:
             return False
@@ -151,7 +151,7 @@ class ClientCRUD:
     async def count(self) -> int:
         """Get total count of clients"""
         try:
-            result = await db.list_clients()
+            result = db.list_clients()
             return result.get("total", 0)
         except Exception:
             return 0
@@ -164,7 +164,7 @@ class ClientCRUD:
         """Search clients by name, email, or tags"""
         try:
             queries = [f'search("{query}")']
-            result = await db.list_clients(queries)
+            result = db.list_clients(queries)
             clients = result.get("documents", [])
 
             # Decrypt sensitive fields
@@ -182,7 +182,7 @@ class ClientCRUD:
     async def add_tag(self, client_id: str, tag: str) -> Optional[Dict[str, Any]]:
         """Add a tag to a client"""
         try:
-            existing = await db.get_client(client_id)
+            existing = db.get_client(client_id)
             tags = existing.get("tags", [])
             if tag not in tags:
                 tags.append(tag)
@@ -194,7 +194,7 @@ class ClientCRUD:
     async def remove_tag(self, client_id: str, tag: str) -> Optional[Dict[str, Any]]:
         """Remove a tag from a client"""
         try:
-            existing = await db.get_client(client_id)
+            existing = db.get_client(client_id)
             tags = existing.get("tags", [])
             if tag in tags:
                 tags.remove(tag)

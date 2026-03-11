@@ -8,7 +8,7 @@ class ClientBase(BaseModel):
     age: int = Field(..., ge=0, le=120, description="Client's age")
     gender: str = Field(..., min_length=1, max_length=50, description="Client's gender")
     custom_gender: Optional[str] = Field(None, max_length=100, description="Custom gender specification")
-    background: Optional[str] = Field(None, max_length=2400, description="Client background information")
+    background: Optional[str] = Field(None, description="Client background information")
     
     @validator('full_name')
     def validate_full_name(cls, v):
@@ -18,7 +18,7 @@ class ClientBase(BaseModel):
     
     @validator('gender')
     def validate_gender(cls, v):
-        allowed_genders = ['female', 'male', 'non-binary', 'prefer-not-to-say', 'other']
+        allowed_genders = ['female', 'male', 'non-binary', ]
         if v not in allowed_genders:
             raise ValueError(f'Gender must be one of: {", ".join(allowed_genders)}')
         return v
@@ -35,7 +35,7 @@ class ClientUpdate(BaseModel):
     age: Optional[int] = Field(None, ge=0, le=120)
     gender: Optional[str] = Field(None, min_length=1, max_length=50)
     custom_gender: Optional[str] = Field(None, max_length=100)
-    background: Optional[str] = Field(None, max_length=2400)
+    background: Optional[str] = None
     
     @validator('full_name')
     def validate_full_name(cls, v):
@@ -46,7 +46,7 @@ class ClientUpdate(BaseModel):
     @validator('gender')
     def validate_gender(cls, v):
         if v is not None:
-            allowed_genders = ['female', 'male', 'non-binary', 'prefer-not-to-say', 'other']
+            allowed_genders = ['female', 'male', 'non-binary']
             if v not in allowed_genders:
                 raise ValueError(f'Gender must be one of: {", ".join(allowed_genders)}')
         return v

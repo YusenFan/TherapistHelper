@@ -197,16 +197,7 @@ export default function ClientsPage() {
                       </span>
                     </div>
 
-                    <div className="space-y-3 mb-4">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Created:</span>
-                        <span className="text-therapy-navy font-medium">{formatDate(client.created_at)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Client ID:</span>
-                        <span className="text-therapy-navy font-medium">#{client.id}</span>
-                      </div>
-                    </div>
+                
 
                     <div className="flex space-x-2">
                       <Link 

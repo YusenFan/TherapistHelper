@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 
 interface SidebarProps {
   isCollapsed: boolean
@@ -10,14 +11,23 @@ interface SidebarProps {
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, logout } = useAuth()
+
+  const handleLogout = async () => {
+    await logout()
+    router.replace('/login')
+  }
+
+  const userInitials = user?.name
+    ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : user?.email?.slice(0, 2).toUpperCase() ?? 'U'
 
   const navigationItems = [
     { name: 'Dashboard', href: '/', icon: 'dashboard' },
     { name: 'Clients', href: '/clients', icon: 'clients' },
     { name: 'Sessions', href: '/sessions', icon: 'sessions' },
-    { name: 'Templates', href: '/templates', icon: 'templates' },
-    { name: 'Settings', href: '/settings', icon: 'settings' },
-    { name: 'Help', href: '/help', icon: 'help' }
+    { name: 'Chat', href: '/chat', icon: 'chat' },
   ]
 
   const getIcon = (iconName: string) => {
@@ -45,6 +55,12 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         return (
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        )
+      case 'chat':
+        return (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
         )
       case 'settings':
@@ -83,7 +99,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
               </div>
               {!isCollapsed && (
                 <span className="text-lg font-semibold text-therapy-navy">
-                  Therapist Helper AI
+                  TheraFlow
                 </span>
               )}
             </Link>
@@ -132,19 +148,28 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
               </li>
             </ul>
 
-            {/* User Profile Section */}
-            <div className="border-t border-gray-200 pt-4">
+            {/* User Profile + Logout Section */}
+            <div className="border-t border-gray-200 pt-4 space-y-2">
               <div className={`flex items-center gap-x-3 ${isCollapsed ? 'justify-center' : ''}`}>
-                <div className="w-8 h-8 bg-therapy-coral rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-white">DR</span>
+                <div className="w-8 h-8 bg-therapy-coral rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-medium text-white">{userInitials}</span>
                 </div>
                 {!isCollapsed && (
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-therapy-navy truncate">Dr. Smith</p>
-                    <p className="text-xs text-gray-500 truncate">Licensed Therapist</p>
+                    <p className="text-sm font-medium text-therapy-navy truncate">{user?.name || user?.email}</p>
+                    <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                   </div>
                 )}
               </div>
+              <button
+                onClick={handleLogout}
+                className={`flex items-center gap-x-3 w-full rounded-md p-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors ${isCollapsed ? 'justify-center' : ''}`}
+              >
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                {!isCollapsed && <span>Sign Out</span>}
+              </button>
             </div>
           </nav>
         </div>

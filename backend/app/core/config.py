@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     # Tinfoil.sh API Configuration (for LLM)
     TINFOIL_API_KEY: str = os.getenv("TINFOIL_API_KEY", "tk_Y8afZljtIO7bsSE4joTfmRlbuwNLAMZjRnWNawl3MLcjP1B0")
-    TINFOIL_API_ENDPOINT: str = "https://api.tinfoil.sh/v1"
+    TINFOIL_API_ENDPOINT: str = os.getenv("TINFOIL_API_ENDPOINT", "https://inference.tinfoil.sh/v1")
 
     # OpenAI Configuration (for Whisper transcription)
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
