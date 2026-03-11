@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: therapisthelper-backend
+    runtime: python
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: APPWRITE_ENDPOINT
+        value: https://sgp.cloud.appwrite.io/v1
+      - key: APPWRITE_PROJECT_ID
+        sync: false
+      - key: APPWRITE_API_KEY
+        sync: false
+      - key: APPWRITE_DATABASE_ID
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TINFOIL_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+
+  - type: web
+    name: therapisthelper-frontend
+    runtime: node
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://therapisthelper-backend.onrender.com
+      - key: NEXT_PUBLIC_APPWRITE_ENDPOINT
+        value: https://sgp.cloud.appwrite.io/v1
+      - key: NEXT_PUBLIC_APPWRITE_PROJECT_ID
+        value: 69adbd67003e41b04c1f
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        sync: false

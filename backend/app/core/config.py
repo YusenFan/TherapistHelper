@@ -42,8 +42,17 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
-        "https://therapist-helper.vercel.app"
+        "https://therapist-helper.vercel.app",
+        "https://therapisthelper-frontend.onrender.com"
     ]
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "")
+
+    @property
+    def cors_origins(self) -> List[str]:
+        origins = list(self.ALLOWED_HOSTS)
+        if self.FRONTEND_URL and self.FRONTEND_URL not in origins:
+            origins.append(self.FRONTEND_URL)
+        return origins
 
     # Environment
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
