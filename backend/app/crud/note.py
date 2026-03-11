@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 from app.core.appwrite_client import db
 from app.core.config import settings
 from app.models.models import NoteCreate, NoteUpdate
+from appwrite.query import Query
 from datetime import datetime
 import uuid
 
@@ -63,9 +64,9 @@ class NoteCRUD:
         try:
             queries = []
             if client_id:
-                queries.append(f'equal("client_id", "{client_id}")')
+                queries.append(Query.equal("client_id", client_id))
             if note_type:
-                queries.append(f'equal("note_type", "{note_type}")')
+                queries.append(Query.equal("note_type", note_type))
 
             result = db.list_documents(
                 collection_id=settings.COLLECTION_NOTES,
@@ -128,8 +129,8 @@ class NoteCRUD:
         """Search notes for a client"""
         try:
             queries = [
-                f'equal("client_id", "{client_id}")',
-                f'search("{query}")'
+                Query.equal("client_id", client_id),
+                Query.search("content", query),
             ]
             result = db.list_documents(
                 collection_id=settings.COLLECTION_NOTES,

@@ -13,12 +13,24 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Only fetch data if user is authenticated
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    // Check if we have a token, otherwise try to refresh it
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setLoading(false)
+      return
+    }
+
     const fetchData = async () => {
       try {
-        const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
         const [clientStats, sessionStats, sessions] = await Promise.all([
-          fetch(`${API}/api/v1/clients/stats/count`).then(r => r.json()).catch(() => null),
-          fetch(`${API}/api/v1/sessions/stats/totals`).then(r => r.json()).catch(() => null),
+          apiClient.getClientsCount().catch(() => null),
+          apiClient.getSessionStats().catch(() => null),
           apiClient.getSessions().catch(() => []),
         ])
 
@@ -52,7 +64,7 @@ export default function Dashboard() {
     }
 
     fetchData()
-  }, [])
+  }, [user])
 
   return (
     <div className="min-h-screen">

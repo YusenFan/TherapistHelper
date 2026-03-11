@@ -138,16 +138,18 @@ class AppwriteDB:
         """List all rows in a table with optional filtering"""
         url = f"{self.endpoint}/databases/{self.database_id}/collections/{table_id}/documents"
 
-        params = {}
+        # Appwrite REST API expects queries as repeated queries[] params
+        params = []
         if queries:
-            params['queries'] = queries
+            for q in queries:
+                params.append(('queries[]', q))
         if limit:
-            params['limit'] = limit
+            params.append(('limit', limit))
 
         response = self._make_request(
             method="GET",
             url=url,
-            params=params
+            params=params if params else None
         )
 
         result = self._handle_response(response, "list")
@@ -279,9 +281,13 @@ class AppwriteDB:
             row_id=client_id
         )
 
-    def count_clients(self) -> int:
-        """Count total clients"""
-        result = self.get_clients()
+    def count_clients(self, therapist_id: Optional[str] = None) -> int:
+        """Count clients, optionally filtered by therapist_id for security"""
+        if therapist_id:
+            from appwrite.query import Query
+            result = self.list_clients([Query.equal("therapist_id", therapist_id)])
+        else:
+            result = self.get_clients()
         return result.get('total', 0)
 
     # ==================== GENERIC DOCUMENT METHODS ====================
@@ -342,9 +348,10 @@ class AppwriteDB:
 
     def get_client_sessions(self, client_id: str) -> Dict[str, Any]:
         """Get all sessions for a client"""
+        from appwrite.query import Query
         return self.list_rows(
             settings.COLLECTION_SESSIONS,
-            [f'equal("client_id", ["{client_id}"])']
+            [Query.equal("client_id", client_id)]
         )
 
     # ==================== NOTE METHODS ====================
@@ -355,9 +362,10 @@ class AppwriteDB:
 
     def get_client_notes(self, client_id: str) -> Dict[str, Any]:
         """Get all notes for a client"""
+        from appwrite.query import Query
         return self.list_rows(
             settings.COLLECTION_NOTES,
-            [f'equal("client_id", ["{client_id}"])']
+            [Query.equal("client_id", client_id)]
         )
 
 

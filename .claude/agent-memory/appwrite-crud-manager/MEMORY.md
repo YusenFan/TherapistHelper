@@ -24,6 +24,28 @@ appwrite client \
 
 Note: Collection IDs are the same as collection names (human-readable slugs).
 
+## clients Collection Schema (ID: `clients`)
+
+| Attribute             | Type     | Required | Max Size   |
+|-----------------------|----------|----------|------------|
+| full_name_encrypted   | string   | YES      | 200 chars  |
+| background_encrypted  | string   | NO       | 10,000 chars |
+| age                   | integer  | YES      | —          |
+| gender                | string   | YES      | 50 chars   |
+| custom_gender         | string   | NO       | 100 chars  |
+| race                  | string   | NO       | 50 chars   |
+| occupation            | string   | NO       | 100 chars  |
+| date_of_birth         | string   | NO       | 20 chars   |
+| notes                 | string   | NO       | 5,000 chars |
+| phone                 | string   | NO       | 20 chars   |
+| email                 | string   | NO       | 100 chars  |
+| status                | string   | NO       | 20 chars   |
+| created_at            | datetime | NO       | —          |
+| updated_at            | datetime | NO       | —          |
+| therapist_id          | string   | NO       | 100 chars  |
+
+Note: `therapist_id` was added 2026-03-11. No `tags` field exists on clients.
+
 ## sessions Collection Schema (ID: `sessions`)
 
 | Attribute            | Type     | Required | Max Size / Constraint        |

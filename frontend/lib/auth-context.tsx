@@ -19,21 +19,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    account.get()
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false))
+    const checkAuth = async () => {
+      try {
+        const u = await account.get()
+        setUser(u)
+        // Try to create/refresh JWT for backend API calls
+        try {
+          const jwt = await account.createJWT()
+          localStorage.setItem('token', jwt.jwt)
+        } catch (err) {
+          console.error('Failed to create JWT:', err)
+          localStorage.removeItem('token')
+        }
+      } catch (err) {
+        // Not logged in or session expired
+        setUser(null)
+        localStorage.removeItem('token')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAuth()
   }, [])
 
   const login = async (email: string, password: string) => {
-    try {
-      await account.deleteSession('current')
-    } catch {
-      // No active session, proceed normally
-    }
+    // Create new email/password session directly
     await account.createEmailPasswordSession(email, password)
     const u = await account.get()
     setUser(u)
+
+    // Generate JWT for backend authentication
+    try {
+      const jwt = await account.createJWT()
+      localStorage.setItem('token', jwt.jwt)
+    } catch (err) {
+      console.error('Failed to create JWT:', err)
+    }
   }
 
   const register = async (email: string, password: string, name: string) => {
@@ -41,10 +63,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await account.createEmailPasswordSession(email, password)
     const u = await account.get()
     setUser(u)
+    // Generate JWT for backend authentication
+    try {
+      const jwt = await account.createJWT()
+      localStorage.setItem('token', jwt.jwt)
+    } catch (err) {
+      console.error('Failed to create JWT:', err)
+    }
   }
 
   const logout = async () => {
     await account.deleteSession('current')
+    localStorage.removeItem('token')
     setUser(null)
   }
 

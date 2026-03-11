@@ -2,11 +2,12 @@
 Client API endpoints
 """
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, status, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, status, Query, BackgroundTasks, Depends
 from app.crud.client import client_crud
 from app.crud.persona import persona_crud
 from app.services.llm import llm_service
 from app.models.models import ClientCreate, ClientUpdate, ClientResponse
+from app.core.auth import get_current_user_id
 
 
 async def _generate_persona_task(client_id: str, client_info: dict) -> None:
@@ -24,14 +25,15 @@ router = APIRouter()
 @router.post("/", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
 async def create_client(
     client_in: ClientCreate,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    therapist_id: str = Depends(get_current_user_id)
 ) -> ClientResponse:
     """
     Create a new client profile with encrypted sensitive data.
     Triggers persona generation as a background task.
     """
     try:
-        client = await client_crud.create(obj_in=client_in)
+        client = await client_crud.create(obj_in=client_in, therapist_id=therapist_id)
         client_id = client.get("id") or client.get("$id", "")
         if client_id:
             client_info = {
@@ -54,44 +56,49 @@ async def list_clients(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
     status: Optional[str] = Query(None),
-    tags: Optional[List[str]] = Query(None)
+    tags: Optional[List[str]] = Query(None),
+    therapist_id: str = Depends(get_current_user_id)
 ) -> List[ClientResponse]:
     """
     Retrieve a list of clients with pagination and filtering.
     """
-    clients = await client_crud.get_multi(skip=skip, limit=limit, status=status, tags=tags)
+    clients = await client_crud.get_multi(therapist_id=therapist_id, skip=skip, limit=limit, status=status, tags=tags)
     return [ClientResponse(**client) for client in clients]
 
 
 @router.get("/active", response_model=List[ClientResponse])
-async def list_active_clients() -> List[ClientResponse]:
+async def list_active_clients(
+    therapist_id: str = Depends(get_current_user_id)
+) -> List[ClientResponse]:
     """
     Retrieve all active clients.
     """
-    clients = await client_crud.get_active_clients()
+    clients = await client_crud.get_active_clients(therapist_id=therapist_id)
     return [ClientResponse(**client) for client in clients]
 
 
 @router.get("/search/{query}", response_model=List[ClientResponse])
 async def search_clients(
-    query: str
+    query: str,
+    therapist_id: str = Depends(get_current_user_id)
 ) -> List[ClientResponse]:
     """
     Search clients by name, email, or tags.
     """
-    clients = await client_crud.search_clients(query)
+    clients = await client_crud.search_clients(query, therapist_id=therapist_id)
     return [ClientResponse(**client) for client in clients]
 
 
 @router.get("/{client_id}", response_model=ClientResponse)
 async def get_client(
-    client_id: str
+    client_id: str,
+    therapist_id: str = Depends(get_current_user_id)
 ) -> ClientResponse:
     """
     Get a specific client by ID.
     """
     client = await client_crud.get(client_id)
-    if not client:
+    if not client or client.get("therapist_id") != therapist_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found"
@@ -103,13 +110,14 @@ async def get_client(
 async def update_client(
     *,
     client_id: str,
-    client_in: ClientUpdate
+    client_in: ClientUpdate,
+    therapist_id: str = Depends(get_current_user_id)
 ) -> ClientResponse:
     """
     Update an existing client.
     """
     client = await client_crud.get(client_id)
-    if not client:
+    if not client or client.get("therapist_id") != therapist_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found"
@@ -132,75 +140,100 @@ async def update_client(
 
 @router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_client(
-    client_id: str
+    client_id: str,
+    therapist_id: str = Depends(get_current_user_id)
 ):
     """
     Delete a client.
     """
-    success = await client_crud.delete(client_id)
-    if not success:
+    client = await client_crud.get(client_id)
+    if not client or client.get("therapist_id") != therapist_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found"
         )
+    await client_crud.delete(client_id)
     return None
 
 
 @router.get("/stats/count")
-async def get_clients_count() -> dict:
+async def get_clients_count(
+    therapist_id: str = Depends(get_current_user_id)
+) -> dict:
     """
     Get total count of clients.
     """
-    count = await client_crud.count()
+    count = await client_crud.count(therapist_id=therapist_id)
     return {"total_clients": count}
 
 
 @router.post("/{client_id}/tags/{tag}", response_model=ClientResponse)
 async def add_client_tag(
     client_id: str,
-    tag: str
+    tag: str,
+    therapist_id: str = Depends(get_current_user_id)
 ) -> ClientResponse:
     """
     Add a tag to a client.
     """
-    client = await client_crud.add_tag(client_id, tag)
-    if not client:
+    client = await client_crud.get(client_id)
+    if not client or client.get("therapist_id") != therapist_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found or tag already exists"
         )
-    return ClientResponse(**client)
+    updated = await client_crud.add_tag(client_id, tag)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found or tag already exists"
+        )
+    return ClientResponse(**updated)
 
 
 @router.delete("/{client_id}/tags/{tag}", response_model=ClientResponse)
 async def remove_client_tag(
     client_id: str,
-    tag: str
+    tag: str,
+    therapist_id: str = Depends(get_current_user_id)
 ) -> ClientResponse:
     """
     Remove a tag from a client.
     """
-    client = await client_crud.remove_tag(client_id, tag)
-    if not client:
+    client = await client_crud.get(client_id)
+    if not client or client.get("therapist_id") != therapist_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found or tag does not exist"
         )
-    return ClientResponse(**client)
+    updated = await client_crud.remove_tag(client_id, tag)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found or tag does not exist"
+        )
+    return ClientResponse(**updated)
 
 
 @router.post("/{client_id}/background", response_model=ClientResponse)
 async def update_client_background(
     client_id: str,
-    background: str = Query(..., min_length=1)
+    background: str = Query(..., min_length=1),
+    therapist_id: str = Depends(get_current_user_id)
 ) -> ClientResponse:
     """
     Update client background (usually AI-generated from transcripts).
     """
-    client = await client_crud.update_background(client_id, background)
-    if not client:
+    client = await client_crud.get(client_id)
+    if not client or client.get("therapist_id") != therapist_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found"
         )
-    return ClientResponse(**client)
+    updated = await client_crud.update_background(client_id, background)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found"
+        )
+    return ClientResponse(**updated)

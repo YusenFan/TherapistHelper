@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 from app.core.appwrite_client import db
 from app.core.config import encryption_manager, settings
 from app.models.models import ClientCreate, ClientUpdate
+from appwrite.query import Query
 from datetime import datetime
 import uuid
 
@@ -12,7 +13,7 @@ import uuid
 class ClientCRUD:
     """Client CRUD operations using Appwrite"""
 
-    async def create(self, obj_in: ClientCreate) -> Dict[str, Any]:
+    async def create(self, obj_in: ClientCreate, therapist_id: str) -> Dict[str, Any]:
         """Create a new client with encrypted sensitive data"""
         # Generate document ID
         document_id = str(uuid.uuid4())
@@ -32,6 +33,7 @@ class ClientCRUD:
             "phone": obj_in.phone or None,
             "email": obj_in.email or None,
             "status": obj_in.status,
+            "therapist_id": therapist_id,
             "created_at": now,
             "updated_at": now
         }
@@ -71,6 +73,7 @@ class ClientCRUD:
     async def get_multi(
         self,
         *,
+        therapist_id: str,
         skip: int = 0,
         limit: int = 100,
         status: Optional[str] = None,
@@ -78,12 +81,12 @@ class ClientCRUD:
     ) -> List[Dict[str, Any]]:
         """Get multiple clients with optional filtering"""
         try:
-            queries = []
+            queries = [Query.equal("therapist_id", therapist_id)]
             if status:
-                queries.append(f'equal("status", "{status}")')
+                queries.append(Query.equal("status", status))
             if tags:
                 for tag in tags:
-                    queries.append(f'search("tags", "{tag}")')
+                    queries.append(Query.search("tags", tag))
 
             result = db.list_clients(queries if queries else None)
             clients = result.get("documents", [])
@@ -148,22 +151,25 @@ class ClientCRUD:
         except Exception:
             return False
 
-    async def count(self) -> int:
-        """Get total count of clients"""
+    async def count(self, therapist_id: str) -> int:
+        """Get total count of clients for a therapist"""
         try:
-            result = db.list_clients()
+            result = db.list_clients([Query.equal("therapist_id", therapist_id)])
             return result.get("total", 0)
         except Exception:
             return 0
 
-    async def get_active_clients(self) -> List[Dict[str, Any]]:
-        """Get all active clients"""
-        return await self.get_multi(status="active")
+    async def get_active_clients(self, therapist_id: str) -> List[Dict[str, Any]]:
+        """Get all active clients for a therapist"""
+        return await self.get_multi(therapist_id=therapist_id, status="active")
 
-    async def search_clients(self, query: str) -> List[Dict[str, Any]]:
+    async def search_clients(self, query: str, therapist_id: str) -> List[Dict[str, Any]]:
         """Search clients by name, email, or tags"""
         try:
-            queries = [f'search("{query}")']
+            queries = [
+                Query.equal("therapist_id", therapist_id),
+                Query.search("full_name_encrypted", query),
+            ]
             result = db.list_clients(queries)
             clients = result.get("documents", [])
 

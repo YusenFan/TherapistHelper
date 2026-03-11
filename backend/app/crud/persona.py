@@ -5,6 +5,7 @@ Persona is stored as a special note with note_type="persona" — one per client.
 from typing import Optional, Dict, Any
 from app.core.appwrite_client import db
 from app.core.config import settings
+from appwrite.query import Query
 from datetime import datetime
 
 
@@ -16,7 +17,7 @@ class PersonaCRUD:
         try:
             result = db.list_documents(
                 collection_id=settings.COLLECTION_NOTES,
-                queries=[f'equal("client_id", ["{client_id}"])']
+                queries=[Query.equal("client_id", client_id)]
             )
             docs = result.get("documents", [])
             # Filter by note_type in Python for safety (multi-query Appwrite support varies)

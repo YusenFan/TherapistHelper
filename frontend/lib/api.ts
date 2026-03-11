@@ -145,21 +145,42 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    let token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
+    const makeRequest = async (authToken: string | null): Promise<Response> => {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string>),
+      }
+
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`
+      }
+
+      return fetch(url, {
+        ...options,
+        headers,
+      })
     }
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
+    let response = await makeRequest(token)
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    })
+    // If we get a 401, try to refresh the JWT token
+    if (response.status === 401 && typeof window !== 'undefined') {
+      try {
+        const { account } = await import('./appwrite')
+        const jwt = await account.createJWT()
+        token = jwt.jwt
+        localStorage.setItem('token', token)
+
+        // Retry the request with the new token
+        response = await makeRequest(token)
+      } catch (err) {
+        console.error('Failed to refresh JWT:', err)
+        // If refresh fails, remove the token and let the request fail
+        localStorage.removeItem('token')
+      }
+    }
 
     if (!response.ok) {
       const error = await response.text()
@@ -172,6 +193,14 @@ class ApiClient {
   // Clients
   async getClients(): Promise<ClientListItem[]> {
     return this.request<ClientListItem[]>('/api/v1/clients/')
+  }
+
+  async getClientsCount(): Promise<{ total_clients: number }> {
+    return this.request<{ total_clients: number }>('/api/v1/clients/stats/count')
+  }
+
+  async getSessionStats(): Promise<{ total_hours: number }> {
+    return this.request<{ total_hours: number }>('/api/v1/sessions/stats/totals')
   }
 
   async getClient(id: string): Promise<ClientDetail> {
