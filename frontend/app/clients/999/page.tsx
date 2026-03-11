@@ -4,37 +4,6 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
-// Mock data for the newly created client
-const newClientData = {
-  id: 999,
-  name: "New Client",
-  age: 0,
-  gender: "Not specified",
-  occupation: "To be determined",
-  phone: "To be added",
-  email: "To be added",
-  emergencyContact: "To be added",
-  insuranceProvider: "To be determined",
-  policyNumber: "To be assigned",
-  status: "New",
-  riskLevel: "To be assessed",
-  startDate: new Date().toLocaleDateString(),
-  lastSession: "Not yet scheduled",
-  totalSessions: 0,
-  photo: "NC",
-  
-  // AI-Generated Background
-  aiBackground: {
-    keyTraits: ["New client", "Assessment pending"],
-    riskFactors: ["To be evaluated during intake"],
-    goals: ["Complete initial assessment", "Establish treatment goals"],
-    therapeuticApproach: "To be determined based on initial consultation"
-  },
-  
-  // Session History
-  sessions: []
-}
-
 export default function NewClientProfile() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
@@ -43,7 +12,6 @@ export default function NewClientProfile() {
   useEffect(() => {
     if (searchParams.get('created') === 'true') {
       setShowSuccessMessage(true)
-      // Hide success message after 5 seconds
       const timer = setTimeout(() => setShowSuccessMessage(false), 5000)
       return () => clearTimeout(timer)
     }
@@ -106,40 +74,20 @@ export default function NewClientProfile() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
-              <Link 
+              <Link
                 href="/clients"
                 className="text-therapy-coral hover:text-therapy-coral-dark transition-colors"
               >
                 ← Back to Clients
               </Link>
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-therapy-coral rounded-full flex items-center justify-center">
-                  <span className="text-white text-xl font-medium">{newClientData.photo}</span>
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-therapy-navy">{newClientData.name}</h1>
-                  <div className="flex items-center space-x-4 mt-1">
-                    <span className="text-gray-600">{newClientData.age} years • {newClientData.gender}</span>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-therapy-blue bg-opacity-20 text-therapy-blue">
-                      {newClientData.status}
-                    </span>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                      {newClientData.riskLevel}
-                    </span>
-                  </div>
+              <div>
+                <h1 className="text-3xl font-bold text-therapy-navy">New Client</h1>
+                <div className="flex items-center space-x-4 mt-1">
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-therapy-blue bg-opacity-20 text-therapy-blue">
+                    Setup Required
+                  </span>
                 </div>
               </div>
-            </div>
-            <div className="flex space-x-3">
-              <button className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
-                Schedule First Session
-              </button>
-              <Link 
-                href="/clients/999/edit"
-                className="px-6 py-3 border border-therapy-blue text-therapy-navy rounded-lg hover:bg-therapy-blue hover:bg-opacity-10 transition-colors font-medium"
-              >
-                Complete Profile
-              </Link>
             </div>
           </div>
 
@@ -167,171 +115,22 @@ export default function NewClientProfile() {
 
       {/* Tab Content */}
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Personal Information */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-therapy-navy">Personal Information</h3>
-                  <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium">
-                    Incomplete Profile
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Occupation</label>
-                    <p className="text-gray-400 italic">{newClientData.occupation}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Phone</label>
-                    <p className="text-gray-400 italic">{newClientData.phone}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Email</label>
-                    <p className="text-gray-400 italic">{newClientData.email}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Emergency Contact</label>
-                    <p className="text-gray-400 italic">{newClientData.emergencyContact}</p>
-                  </div>
-        
-                </div>
-                <div className="mt-6 p-4 bg-therapy-blue bg-opacity-10 rounded-lg">
-                  <p className="text-therapy-navy text-sm">
-                    👋 <strong>Welcome!</strong> This is a new client profile. Complete the remaining information to finish the setup.
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Insurance Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Provider</label>
-                    <p className="text-gray-400 italic">{newClientData.insuranceProvider}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Policy Number</label>
-                    <p className="text-gray-400 italic">{newClientData.policyNumber}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Summary Stats */}
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Treatment Summary</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Start Date</span>
-                    <span className="text-therapy-navy font-medium">{newClientData.startDate}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Last Session</span>
-                    <span className="text-gray-400 italic">{newClientData.lastSession}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Sessions</span>
-                    <span className="text-therapy-navy font-medium">{newClientData.totalSessions}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Current Status</span>
-                    <span className="text-therapy-navy font-medium">{newClientData.status}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Next Steps</h3>
-                <div className="space-y-3">
-                  {newClientData.aiBackground.goals.map((goal, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-therapy-coral rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-therapy-navy text-sm">{goal}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'sessions' && (
-          <div className="text-center py-12">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <h3 className="text-lg font-semibold text-therapy-navy mb-2">No Sessions Yet</h3>
-            <p className="text-gray-600 mb-4">This client hasn't had any therapy sessions yet.</p>
-            <button className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
-              Schedule First Session
-            </button>
-          </div>
-        )}
-
-        {activeTab === 'insights' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Key Traits</h3>
-                <div className="flex flex-wrap gap-2">
-                  {newClientData.aiBackground.keyTraits.map((trait, index) => (
-                    <span key={index} className="px-3 py-2 bg-therapy-blue bg-opacity-20 text-therapy-navy rounded-full text-sm font-medium">
-                      {trait}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Risk Factors</h3>
-                <div className="space-y-3">
-                  {newClientData.aiBackground.riskFactors.map((factor, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-therapy-navy text-sm">{factor}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Treatment Goals</h3>
-                <div className="space-y-3">
-                  {newClientData.aiBackground.goals.map((goal, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-therapy-green rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-therapy-navy text-sm">{goal}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Therapeutic Approach</h3>
-                <p className="text-therapy-navy leading-relaxed">{newClientData.aiBackground.therapeuticApproach}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'edit' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-therapy-navy mb-6">Complete Profile</h3>
-            <div className="text-center py-12 text-gray-500">
-              <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              <p>Complete profile editing form would be implemented here</p>
-              <p className="text-sm mt-2">This would allow editing of all client information including contact details, insurance, and background notes</p>
-            </div>
-          </div>
-        )}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+          <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 className="text-xl font-semibold text-therapy-navy mb-2">Client Setup Required</h3>
+          <p className="text-gray-600 mb-6">
+            This client profile needs to be completed. Please fill in the required information.
+          </p>
+          <Link
+            href="/clients"
+            className="inline-flex items-center px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium"
+          >
+            Go to Clients Page
+          </Link>
+        </div>
       </main>
     </div>
   )
-} 
+}

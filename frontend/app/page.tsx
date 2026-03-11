@@ -3,49 +3,55 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
-
-// Mock data for demonstration
-const recentSessions = [
-  {
-    id: 1,
-    clientName: "John Doe",
-    date: "July 5, 2025",
-    duration: "50 min",
-    summary: "Discussed work stress and family relationships. Client reported improved boundary-setting with manager.",
-    mood: "Improving"
-  },
-  {
-    id: 2,
-    clientName: "Sarah Johnson",
-    date: "July 4, 2025",
-    duration: "45 min",
-    summary: "Continued cognitive behavioral therapy for anxiety. Client completed homework assignments successfully.",
-    mood: "Stable"
-  },
-  {
-    id: 3,
-    clientName: "Michael Chen",
-    date: "July 3, 2025",
-    duration: "60 min",
-    summary: "Initial consultation for depression symptoms. Established treatment goals and discussed medication options.",
-    mood: "Initial Assessment"
-  }
-]
+import { apiClient, Session, ClientListItem } from '@/lib/api'
 
 export default function Dashboard() {
   const { user } = useAuth()
   const [totalClients, setTotalClients] = useState<number | null>(null)
   const [totalHours, setTotalHours] = useState<number | null>(null)
+  const [recentSessions, setRecentSessions] = useState<(Session & { clientName: string })[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    Promise.all([
-      fetch(`${API}/api/v1/clients/stats/count`).then(r => r.json()).catch(() => null),
-      fetch(`${API}/api/v1/sessions/stats/totals`).then(r => r.json()).catch(() => null),
-    ]).then(([clientStats, sessionStats]) => {
-      if (clientStats) setTotalClients(clientStats.total_clients)
-      if (sessionStats) setTotalHours(sessionStats.total_hours)
-    })
+    const fetchData = async () => {
+      try {
+        const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+        const [clientStats, sessionStats, sessions] = await Promise.all([
+          fetch(`${API}/api/v1/clients/stats/count`).then(r => r.json()).catch(() => null),
+          fetch(`${API}/api/v1/sessions/stats/totals`).then(r => r.json()).catch(() => null),
+          apiClient.getSessions().catch(() => []),
+        ])
+
+        if (clientStats) setTotalClients(clientStats.total_clients)
+        if (sessionStats) setTotalHours(sessionStats.total_hours)
+
+        // Get recent sessions with client names
+        if (sessions && sessions.length > 0) {
+          const clientIds = Array.from(new Set(sessions.slice(0, 10).map(s => s.client_id)))
+          const clients = await Promise.all(
+            clientIds.map(id => apiClient.getClient(id).catch(() => null))
+          )
+
+          const sessionsWithClients = sessions
+            .slice(0, 10)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .map(session => {
+              const client = clients.find(c => c?.id === session.client_id)
+              return {
+                ...session,
+                clientName: client?.full_name || 'Unknown Client',
+              }
+            })
+          setRecentSessions(sessionsWithClients)
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
   }, [])
 
   return (
@@ -145,41 +151,44 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-4">
-            {recentSessions.map((session) => (
-              <div key={session.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-4 mb-3">
-                      <h3 className="text-lg font-semibold text-therapy-navy">{session.clientName}</h3>
-                      <span className="text-sm text-gray-500">{session.date}</span>
-                      <span className="text-sm text-gray-500">•</span>
-                      <span className="text-sm text-gray-500">{session.duration}</span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        session.mood === 'Improving'
-                          ? 'bg-therapy-green bg-opacity-20 text-therapy-green'
-                          : session.mood === 'Stable'
-                          ? 'bg-therapy-blue bg-opacity-20 text-therapy-blue'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {session.mood}
-                      </span>
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">Loading...</div>
+            ) : recentSessions.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center text-gray-500">
+                No recent sessions found. Start a new session to see activity here.
+              </div>
+            ) : (
+              recentSessions.map((session) => (
+                <div key={session.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-4 mb-3">
+                        <h3 className="text-lg font-semibold text-therapy-navy">{session.clientName}</h3>
+                        <span className="text-sm text-gray-500">
+                          {new Date(session.session_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        <span className="text-sm text-gray-500">•</span>
+                        <span className="text-sm text-gray-500">{session.duration_minutes} min</span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium bg-therapy-blue bg-opacity-20 text-therapy-blue`}>
+                          {session.session_type}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed">
+                        {session.summary || session.notes || 'No notes available'}
+                      </p>
                     </div>
-                    <p className="text-gray-600 leading-relaxed">{session.summary}</p>
-                  </div>
-                  <div className="ml-6 flex space-x-2">
-                    <Link
-                      href={`/session-analysis?session=${session.id}`}
-                      className="px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors text-sm font-medium"
-                    >
-                      View Details
-                    </Link>
-                    <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
-                      Export
-                    </button>
+                    <div className="ml-6 flex space-x-2">
+                      <Link
+                        href={`/session-analysis?session=${session.id}`}
+                        className="px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors text-sm font-medium"
+                      >
+                        View Details
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </main>
