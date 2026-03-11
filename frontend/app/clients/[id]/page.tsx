@@ -507,7 +507,7 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Last Updated</span>
-                    <span className="text-therapy-navy font-medium">{formatDate(clientData.updated_at)}</span>
+                    <span className="text-therapy-navy font-medium">{formatDate(clientData.updated_at ?? '')}</span>
                   </div>
                 
                   <div className="flex justify-between">

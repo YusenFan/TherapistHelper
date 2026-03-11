@@ -181,19 +181,19 @@ function PreviousSessionPanel({ session }: { session: Session }) {
       </button>
       {open && (
         <div className="px-5 pb-5 space-y-3 text-sm">
-          {analysis?.plan && (
+          {!!analysis?.plan && (
             <div>
               <p className="font-medium text-blue-700 mb-1">Plan from last session</p>
               <p className="text-blue-800 whitespace-pre-wrap">{String(analysis.plan)}</p>
             </div>
           )}
-          {analysis?.homework_assigned && (
+          {!!analysis?.homework_assigned && (
             <div>
               <p className="font-medium text-blue-700 mb-1">Homework assigned</p>
               <p className="text-blue-800">{String(analysis.homework_assigned)}</p>
             </div>
           )}
-          {analysis?.next_session_focus && (
+          {!!analysis?.next_session_focus && (
             <div>
               <p className="font-medium text-blue-700 mb-1">Focus areas planned</p>
               <p className="text-blue-800">{String(analysis.next_session_focus)}</p>
@@ -387,7 +387,6 @@ function NewSessionForm() {
         duration_minutes: durationMinutes,
         session_type: sessionType,
         notes: buildNotesSummary(finalAnalysis),
-        tags: analysis.tags,
         analysis: finalAnalysis as unknown as Record<string, unknown>,
       })
       router.push(`/sessions?client_id=${selectedClientId}&session_id=${session.id}&saved=true`)
@@ -1019,7 +1018,7 @@ function NewSessionForm() {
           <h2 className="text-base font-semibold text-therapy-navy mb-5">Homework</h2>
 
           {/* Previous homework completion */}
-          {prevSession && (prevSession.analysis as Record<string, unknown>)?.homework_assigned && (
+          {prevSession && !!(prevSession.analysis as Record<string, unknown>)?.homework_assigned && (
             <div className="mb-5 p-4 bg-blue-50 rounded-lg border border-blue-100">
               <p className="text-xs font-medium text-blue-700 mb-1">Previous homework</p>
               <p className="text-sm text-blue-800 mb-3">

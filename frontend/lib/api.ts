@@ -15,6 +15,7 @@ export interface ClientDetail extends ClientListItem {
   address_encrypted?: string
   emergency_contact_encrypted?: string
   occupation?: string
+  custom_gender?: string
   tags?: string[]
   diagnosis?: string
   medications?: string
@@ -107,9 +108,9 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
 
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     }
 
     if (token) {
@@ -171,7 +172,7 @@ class ApiClient {
     const formData = new FormData()
     formData.append('file', audioBlob, filename)
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    const headers: HeadersInit = {}
+    const headers: Record<string, string> = {}
     if (token) headers['Authorization'] = `Bearer ${token}`
     const response = await fetch(url, { method: 'POST', headers, body: formData })
     if (!response.ok) {
