@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.models.models import SessionCreate, SessionUpdate
 from datetime import datetime
 import uuid
+import json
 
 
 class SessionCRUD:
@@ -25,7 +26,7 @@ class SessionCRUD:
             "tags": obj_in.tags or [],
             "transcript": "",
             "summary": "",
-            "analysis": obj_in.analysis or {},
+            "analysis": json.dumps(obj_in.analysis) if obj_in.analysis else "",
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         }
@@ -87,6 +88,10 @@ class SessionCRUD:
 
             # Prepare update data
             update_data = obj_in.model_dump(exclude_unset=True)
+
+            # Serialize analysis dict to JSON string (stored as longtext in Appwrite)
+            if "analysis" in update_data and isinstance(update_data["analysis"], dict):
+                update_data["analysis"] = json.dumps(update_data["analysis"])
 
             # Update timestamp
             update_data["updated_at"] = datetime.utcnow().isoformat()

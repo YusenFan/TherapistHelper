@@ -1,0 +1,72 @@
+# Appwrite CRUD Manager Memory
+
+## CLI Auth Pattern
+The Appwrite CLI has a BigInt serialization bug that prevents table rendering for list-collections and list-attributes.
+Workaround: use direct REST API calls with curl instead of the CLI for these commands.
+
+Auth config that works:
+```bash
+appwrite client \
+  --endpoint https://sgp.cloud.appwrite.io/v1 \
+  --project-id 69adbd67003e41b04c1f \
+  --key <API_KEY_FROM_backend/.env>
+```
+
+## All 5 Collections (Database: 69ae233c0026eb1facc0)
+
+| Collection Name | Collection ID |
+|---|---|
+| clients    | clients    |
+| sessions   | sessions   |
+| notes      | notes      |
+| tags       | tags       |
+| attendance | attendance |
+
+Note: Collection IDs are the same as collection names (human-readable slugs).
+
+## sessions Collection Schema (ID: `sessions`)
+
+| Attribute          | Type     | Required | Max Size / Constraint        |
+|--------------------|----------|----------|------------------------------|
+| client_id          | string   | YES      | 50 chars                     |
+| session_date       | datetime | YES      |                              |
+| duration_minutes   | integer  | YES      | BigInt range                 |
+| session_type       | string   | NO       | 20 chars                     |
+| transcript         | string   | NO       | 50,000 chars                 |
+| summary            | string   | NO       | 5,000 chars                  |
+| notes              | string   | NO       | 5,000 chars                  |
+| created_at         | datetime | NO       |                              |
+| updated_at         | datetime | NO       |                              |
+| tags               | string[] | NO       | 100 chars/element, array     |
+| analysis           | longtext | NO       | unlimited (stores JSON)      |
+
+Note: At 11 attributes, sessions is at/near the Appwrite plan attribute limit for string-type columns.
+`longtext` type bypasses the size-based string limit and does not count toward same cap — use it for large text fields.
+
+## notes Collection Schema (ID: `notes`)
+
+| Attribute  | Type     | Required | Max Size |
+|------------|----------|----------|----------|
+| client_id  | string   | YES      | 50 chars |
+| note_type  | string   | YES      | 20 chars |
+| content    | string   | YES      | 5,000 chars |
+| created_at | datetime | NO       |          |
+| updated_at | datetime | NO       |          |
+
+## tags Collection Schema (ID: `tags`)
+
+| Attribute | Type   | Required | Max Size |
+|-----------|--------|----------|----------|
+| name      | string | YES      | 100 chars |
+| color     | string | NO       | 7 chars  |
+
+## attendance Collection Schema (ID: `attendance`)
+
+| Attribute           | Type     | Required | Max Size  |
+|---------------------|----------|----------|-----------|
+| client_id           | string   | YES      | 50 chars  |
+| session_id          | string   | YES      | 50 chars  |
+| scheduled_date      | datetime | YES      |           |
+| attended            | boolean  | YES      |           |
+| cancellation_reason | string   | NO       | 500 chars |
+| created_at          | datetime | NO       |           |

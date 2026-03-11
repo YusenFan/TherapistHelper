@@ -517,14 +517,7 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
-                    Export Data
-                  </button>
-                </div>
-              </div>
+            
             </div>
           </div>
         )}
