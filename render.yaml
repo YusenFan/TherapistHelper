@@ -45,3 +45,5 @@ services:
         value: 69adbd67003e41b04c1f
       - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
         sync: false
+      - key: NEXT_PUBLIC_APPWRITE_PROJECT_NAME
+        value: TherapistHelper
