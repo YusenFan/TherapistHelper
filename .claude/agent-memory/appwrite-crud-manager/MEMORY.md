@@ -12,39 +12,54 @@ appwrite client \
   --key <API_KEY_FROM_backend/.env>
 ```
 
-## All 5 Collections (Database: 69ae233c0026eb1facc0)
+## Active Collections (Database: 69ae233c0026eb1facc0)
 
-| Collection Name | Collection ID |
-|---|---|
-| clients    | clients    |
-| sessions   | sessions   |
-| notes      | notes      |
-| tags       | tags       |
-| attendance | attendance |
+| Collection Name       | Collection ID         |
+|-----------------------|-----------------------|
+| clients               | clients               |
+| sessions              | sessions              |
+| session_notes         | session_notes         |
+| clinical_assessments  | clinical_assessments  |
 
 Note: Collection IDs are the same as collection names (human-readable slugs).
+`notes`, `tags`, and `attendance` collections were deleted on 2026-03-15 (v3 migration).
 
-## clients Collection Schema (ID: `clients`)
+## clients Collection Schema (ID: `clients`) — verified live 2026-03-17
 
-| Attribute             | Type     | Required | Max Size   |
-|-----------------------|----------|----------|------------|
-| full_name_encrypted   | string   | YES      | 200 chars  |
-| background_encrypted  | string   | NO       | 10,000 chars |
-| age                   | integer  | YES      | —          |
-| gender                | string   | YES      | 50 chars   |
-| custom_gender         | string   | NO       | 100 chars  |
-| race                  | string   | NO       | 50 chars   |
-| occupation            | string   | NO       | 100 chars  |
-| date_of_birth         | string   | NO       | 20 chars   |
-| notes                 | string   | NO       | 5,000 chars |
-| phone                 | string   | NO       | 20 chars   |
-| email                 | string   | NO       | 100 chars  |
-| status                | string   | NO       | 20 chars   |
-| created_at            | datetime | NO       | —          |
-| updated_at            | datetime | NO       | —          |
-| therapist_id          | string   | NO       | 100 chars  |
+28 attributes total. All are optional (required=false). None have enum constraints.
 
-Note: `therapist_id` was added 2026-03-11. No `tags` field exists on clients.
+| Attribute                      | Type     | Array | Encrypted | Size     |
+|-------------------------------|----------|-------|-----------|----------|
+| therapist_id                   | string   | no    | no        | 100      |
+| administrative_sex             | string   | no    | no        | 30       |
+| gender_identity                | string   | no    | no        | 50       |
+| gender_identity_other          | string   | no    | no        | 100      |
+| pronouns                       | string   | no    | no        | 50       |
+| sexual_orientation             | string   | no    | no        | 50       |
+| sexual_orientation_other       | string   | no    | no        | 100      |
+| race_other                     | string   | no    | no        | 100      |
+| ethnicity_other                | string   | no    | no        | 100      |
+| smoking_status                 | string   | no    | no        | 30       |
+| marital_status                 | string   | no    | no        | 30       |
+| employment_status              | string   | no    | no        | 30       |
+| occupation_title               | string   | no    | no        | 100      |
+| religious_spiritual_affiliation| string   | no    | no        | 100      |
+| full_name_encrypted            | string   | no    | YES       | 500      |
+| preferred_name_encrypted       | string   | no    | YES       | 500      |
+| date_of_birth_encrypted        | string   | no    | YES       | 500      |
+| email_encrypted                | string   | no    | YES       | 500      |
+| phone_encrypted                | string   | no    | YES       | 500      |
+| background_summary_encrypted   | string   | no    | YES       | 65535    |
+| approximate_age                | integer  | no    | —         | BigInt   |
+| race_values                    | string   | YES   | no        | 100/elem |
+| ethnicity_values               | string   | YES   | no        | 100/elem |
+| language_codes                 | string   | YES   | no        | 20/elem  |
+| created_at                     | datetime | no    | —         | —        |
+| updated_at                     | datetime | no    | —         | —        |
+| archived_at                    | datetime | no    | —         | —        |
+| status                         | string   | no    | no        | 20       |
+
+Note: listAttributes API silently caps at 25 results despite total=28. Fetch status/updated_at/archived_at individually if needed. No `tags`, `age`, `gender`, `race`, `occupation`, `notes`, `phone`, or `email` plain-text fields exist — v3 schema replaced them.
 
 ## sessions Collection Schema (ID: `sessions`)
 
@@ -80,20 +95,3 @@ Note: sessions is at the Appwrite plan string-attribute cap (12 string-type). Ne
 | created_at | datetime | NO       |          |
 | updated_at | datetime | NO       |          |
 
-## tags Collection Schema (ID: `tags`)
-
-| Attribute | Type   | Required | Max Size |
-|-----------|--------|----------|----------|
-| name      | string | YES      | 100 chars |
-| color     | string | NO       | 7 chars  |
-
-## attendance Collection Schema (ID: `attendance`)
-
-| Attribute           | Type     | Required | Max Size  |
-|---------------------|----------|----------|-----------|
-| client_id           | string   | YES      | 50 chars  |
-| session_id          | string   | YES      | 50 chars  |
-| scheduled_date      | datetime | YES      |           |
-| attended            | boolean  | YES      |           |
-| cancellation_reason | string   | NO       | 500 chars |
-| created_at          | datetime | NO       |           |

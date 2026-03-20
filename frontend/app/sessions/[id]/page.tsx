@@ -458,7 +458,7 @@ function SessionDetailForm() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-therapy-navy">{client.full_name}</p>
-                    <p className="text-xs text-gray-500">{client.age} y/o · {client.gender}</p>
+                    <p className="text-xs text-gray-500">{client.approximate_age ? `${client.approximate_age} y/o` : ''}{client.approximate_age && client.gender_identity ? ' · ' : ''}{client.gender_identity || ''}</p>
                   </div>
                 </div>
               </div>

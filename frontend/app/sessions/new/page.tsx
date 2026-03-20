@@ -10,19 +10,10 @@ import { apiClient, type ClientListItem, type Session } from '@/lib/api'
 type NoteFormat = 'Free' | 'BIRP' | 'DAP' | 'SOAP'
 type SessionType = 'individual' | 'couple' | 'family' | 'group'
 type HomeworkCompletion = 'completed' | 'partial' | 'not_completed' | 'na'
-type RiskLevel = 'none' | 'low' | 'moderate' | 'high'
-type Affect =
-  | 'congruent' | 'flat' | 'labile' | 'anxious' | 'restricted'
-  | 'expansive' | 'euphoric' | 'dysphoric' | 'irritable'
 
 interface SessionAnalysis {
   note_format: NoteFormat
   session_status: 'draft' | 'finalized'
-  // Mood & affect
-  mood_rating: number
-  affect: Affect | ''
-  // Interventions
-  interventions_used: string[]
   // BIRP fields
   behavior: string
   intervention: string
@@ -36,29 +27,16 @@ interface SessionAnalysis {
   objective: string
   // Free text (always primary)
   free_text: string
-  // Risk
-  risk_level: RiskLevel
-  suicidality_screened: boolean
-  safety_plan_updated: boolean
-  risk_notes: string
   // Homework
   homework_completion: HomeworkCompletion
   homework_assigned: string
-  // Next session
-  next_session_focus: string
-  follow_up_actions: string
   // Private (not in official record)
   private_notes: string
-  // Tags
-  tags: string[]
 }
 
 const defaultAnalysis: SessionAnalysis = {
   note_format: 'Free',
   session_status: 'draft',
-  mood_rating: 5,
-  affect: '',
-  interventions_used: [],
   behavior: '',
   intervention: '',
   response: '',
@@ -68,44 +46,13 @@ const defaultAnalysis: SessionAnalysis = {
   subjective: '',
   objective: '',
   free_text: '',
-  risk_level: 'none',
-  suicidality_screened: false,
-  safety_plan_updated: false,
-  risk_notes: '',
   homework_completion: 'na',
   homework_assigned: '',
-  next_session_focus: '',
-  follow_up_actions: '',
   private_notes: '',
-  tags: [],
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const INTERVENTION_OPTIONS = [
-  'CBT', 'DBT', 'EMDR', 'ACT', 'Motivational Interviewing',
-  'Psychoeducation', 'Mindfulness', 'Solution-Focused', 'Person-Centred',
-  'Narrative Therapy', 'Somatic', 'Gottman Method', 'Attachment-Based',
-  'Psychodynamic', 'Exposure Therapy', 'Grounding Techniques', 'Other',
-]
-
-const AFFECT_OPTIONS: Affect[] = [
-  'congruent', 'flat', 'labile', 'anxious', 'restricted',
-  'expansive', 'euphoric', 'dysphoric', 'irritable',
-]
-
-const MOOD_LABELS: Record<number, string> = {
-  1: 'Severely distressed', 2: 'Very distressed', 3: 'Distressed',
-  4: 'Below baseline', 5: 'Neutral', 6: 'Slightly positive',
-  7: 'Positive', 8: 'Good', 9: 'Very good', 10: 'Thriving',
-}
-
-const PREDEFINED_SESSION_TAGS = [
-  'Anxiety', 'Depression', 'Trauma', 'Crisis', 'Progress', 'Homework Review',
-  'Goal Setting', 'Assessment', 'Relapse', 'Breakthrough', 'Resistance',
-  'Grief', 'Relationship Issues', 'Psychoeducation', 'Suicidality',
-  'Termination', 'Referral', 'Medication Review', 'Boundary Work',
-]
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
@@ -115,14 +62,6 @@ function toLocalDateString(date: Date) {
 
 function toLocalTimeString(date: Date) {
   return date.toTimeString().slice(0, 5)
-}
-
-function calcDurationMinutes(start: string, end: string): number {
-  if (!start || !end) return 50
-  const [sh, sm] = start.split(':').map(Number)
-  const [eh, em] = end.split(':').map(Number)
-  const diff = (eh * 60 + em) - (sh * 60 + sm)
-  return diff > 0 ? diff : 50
 }
 
 function buildNotesSummary(analysis: SessionAnalysis): string {
@@ -228,10 +167,8 @@ function NewSessionForm() {
 
   // Session header
   const [sessionDate, setSessionDate] = useState(toLocalDateString(now))
-  const [startTime, setStartTime] = useState(toLocalTimeString(now))
-  const [endTime, setEndTime] = useState('')
+  const [startTime] = useState(toLocalTimeString(now))
   const [sessionType, setSessionType] = useState<SessionType>('individual')
-  const [modality, setModality] = useState('')
 
   // Note format
   const [noteFormat, setNoteFormat] = useState<NoteFormat>('Free')
@@ -240,7 +177,6 @@ function NewSessionForm() {
   const [analysis, setAnalysis] = useState<SessionAnalysis>(defaultAnalysis)
 
   // Tags
-  const [customTagInput, setCustomTagInput] = useState('')
 
   // Microphone / recording
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -273,37 +209,6 @@ function NewSessionForm() {
   const updateAnalysis = useCallback(<K extends keyof SessionAnalysis>(key: K, value: SessionAnalysis[K]) => {
     setAnalysis(prev => ({ ...prev, [key]: value }))
   }, [])
-
-  const toggleIntervention = (name: string) => {
-    setAnalysis(prev => ({
-      ...prev,
-      interventions_used: prev.interventions_used.includes(name)
-        ? prev.interventions_used.filter(i => i !== name)
-        : [...prev.interventions_used, name],
-    }))
-  }
-
-  // ── Tag helpers ───────────────────────────────────────────────────────────
-
-  const togglePredefinedTag = (tag: string) => {
-    setAnalysis(prev => ({
-      ...prev,
-      tags: prev.tags.includes(tag)
-        ? prev.tags.filter(t => t !== tag)
-        : [...prev.tags, tag],
-    }))
-  }
-
-  const addCustomTag = () => {
-    const tag = customTagInput.replace(/,/g, '').trim()
-    if (!tag || analysis.tags.includes(tag)) { setCustomTagInput(''); return }
-    setAnalysis(prev => ({ ...prev, tags: [...prev.tags, tag] }))
-    setCustomTagInput('')
-  }
-
-  const removeTag = (tag: string) => {
-    setAnalysis(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }))
-  }
 
   // ── Microphone ────────────────────────────────────────────────────────────
 
@@ -372,7 +277,7 @@ function NewSessionForm() {
   )
 
   const selectedClient = clients.find(c => c.id === selectedClientId)
-  const durationMinutes = endTime ? calcDurationMinutes(startTime, endTime) : 50
+  const durationMinutes = 50
 
   const handleSave = async (status: 'draft' | 'finalized') => {
     if (!selectedClientId) { setSaveError('Please select a client.'); return }
@@ -471,7 +376,7 @@ function NewSessionForm() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-therapy-navy">{selectedClient.full_name}</p>
-                      <p className="text-xs text-gray-500">{selectedClient.age} y/o · {selectedClient.gender}</p>
+                      <p className="text-xs text-gray-500">{selectedClient.approximate_age ? `${selectedClient.approximate_age} y/o` : ''}{selectedClient.approximate_age && selectedClient.gender_identity ? ' · ' : ''}{selectedClient.gender_identity || ''}</p>
                     </div>
                   </div>
                   <button
@@ -511,7 +416,7 @@ function NewSessionForm() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-therapy-navy">{c.full_name}</p>
-                            <p className="text-xs text-gray-500">{c.age} y/o · {c.gender}</p>
+                            <p className="text-xs text-gray-500">{c.approximate_age ? `${c.approximate_age} y/o` : ''}{c.approximate_age && c.gender_identity ? ' · ' : ''}{c.gender_identity || ''}</p>
                           </div>
                         </button>
                       ))}
@@ -547,44 +452,6 @@ function NewSessionForm() {
               </select>
             </div>
 
-            {/* Start time */}
-            <div>
-              <label className="block text-sm font-medium text-therapy-navy mb-1">Start Time</label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={e => setStartTime(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent text-sm"
-              />
-            </div>
-
-            {/* End time */}
-            <div>
-              <label className="block text-sm font-medium text-therapy-navy mb-1">
-                End Time
-                {endTime && (
-                  <span className="ml-2 text-xs text-gray-500 font-normal">({durationMinutes} min)</span>
-                )}
-              </label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={e => setEndTime(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent text-sm"
-              />
-            </div>
-
-            {/* Therapeutic modality */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-therapy-navy mb-1">Primary Therapeutic Approach</label>
-              <input
-                type="text"
-                placeholder="e.g. Cognitive Behavioural Therapy, EMDR, Person-centred..."
-                value={modality}
-                onChange={e => setModality(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent text-sm"
-              />
-            </div>
           </div>
         </div>
 
@@ -792,226 +659,6 @@ function NewSessionForm() {
           )}
         </div>
 
-        {/* ── 3. Session Tags ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-base font-semibold text-therapy-navy mb-1">Session Tags</h2>
-          <p className="text-xs text-gray-400 mb-4">Label this session for easy filtering and tracking over time.</p>
-
-          {/* Predefined tags */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {PREDEFINED_SESSION_TAGS.map(tag => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => togglePredefinedTag(tag)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  analysis.tags.includes(tag)
-                    ? 'bg-therapy-coral text-white'
-                    : 'border border-gray-300 text-gray-600 hover:border-therapy-coral hover:text-therapy-coral'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-
-          {/* Custom tag input */}
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={customTagInput}
-              onChange={e => setCustomTagInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ',') {
-                  e.preventDefault()
-                  addCustomTag()
-                }
-              }}
-              placeholder="Add custom tag… (Enter or comma to add)"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent text-sm"
-            />
-            <button
-              type="button"
-              onClick={addCustomTag}
-              disabled={!customTagInput.trim()}
-              className="px-4 py-2 bg-therapy-navy text-white rounded-lg text-sm font-medium hover:bg-opacity-90 disabled:opacity-40 transition-colors"
-            >
-              Add
-            </button>
-          </div>
-
-          {/* Selected tags summary */}
-          {analysis.tags.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <p className="text-xs text-gray-500 mb-2">Selected ({analysis.tags.length})</p>
-              <div className="flex flex-wrap gap-2">
-                {analysis.tags.map(tag => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-therapy-coral bg-opacity-10 text-therapy-coral rounded-full text-xs font-medium"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="hover:text-red-600 transition-colors ml-0.5"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── 4. Mood, Affect & Interventions ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-base font-semibold text-therapy-navy mb-5">Client Presentation</h2>
-
-          {/* Mood slider */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-therapy-navy">Mood Rating</label>
-              <span className="text-sm font-semibold text-therapy-coral">
-                {analysis.mood_rating} — {MOOD_LABELS[analysis.mood_rating]}
-              </span>
-            </div>
-            <input
-              type="range"
-              min={1}
-              max={10}
-              value={analysis.mood_rating}
-              onChange={e => updateAnalysis('mood_rating', Number(e.target.value))}
-              className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-therapy-coral"
-            />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
-              <span>1 Severely distressed</span>
-              <span>10 Thriving</span>
-            </div>
-          </div>
-
-          {/* Affect */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-therapy-navy mb-2">Affect (observed)</label>
-            <div className="flex flex-wrap gap-2">
-              {AFFECT_OPTIONS.map(a => (
-                <button
-                  key={a}
-                  type="button"
-                  onClick={() => updateAnalysis('affect', analysis.affect === a ? '' : a)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
-                    analysis.affect === a
-                      ? 'bg-therapy-navy text-white'
-                      : 'border border-gray-300 text-gray-600 hover:border-therapy-navy hover:text-therapy-navy'
-                  }`}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Interventions */}
-          <div>
-            <label className="block text-sm font-medium text-therapy-navy mb-2">Interventions Used</label>
-            <div className="flex flex-wrap gap-2">
-              {INTERVENTION_OPTIONS.map(i => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => toggleIntervention(i)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    analysis.interventions_used.includes(i)
-                      ? 'bg-therapy-coral text-white'
-                      : 'border border-gray-300 text-gray-600 hover:border-therapy-coral hover:text-therapy-coral'
-                  }`}
-                >
-                  {i}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ── 5. Risk Assessment ── */}
-        <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-6">
-          <div className="flex items-center space-x-2 mb-5">
-            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 15c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-            <h2 className="text-base font-semibold text-amber-900">Risk Assessment</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Risk level */}
-            <div>
-              <label className="block text-sm font-medium text-amber-900 mb-2">Overall Risk Level</label>
-              <div className="flex gap-2">
-                {(['none', 'low', 'moderate', 'high'] as RiskLevel[]).map(level => (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() => updateAnalysis('risk_level', level)}
-                    className={`flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-colors ${
-                      analysis.risk_level === level
-                        ? level === 'none' ? 'bg-green-500 text-white'
-                          : level === 'low' ? 'bg-blue-500 text-white'
-                          : level === 'moderate' ? 'bg-orange-500 text-white'
-                          : 'bg-red-600 text-white'
-                        : 'border border-amber-300 text-amber-800 hover:bg-amber-100'
-                    }`}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-              {(analysis.risk_level === 'moderate' || analysis.risk_level === 'high') && (
-                <p className="mt-2 text-xs text-red-700 font-medium">
-                  Document safety plan status and follow-up actions below.
-                </p>
-              )}
-            </div>
-
-            {/* Toggles */}
-            <div className="space-y-3">
-              <label className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber-200 cursor-pointer">
-                <span className="text-sm text-amber-900">Suicidality screened</span>
-                <button
-                  type="button"
-                  onClick={() => updateAnalysis('suicidality_screened', !analysis.suicidality_screened)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${analysis.suicidality_screened ? 'bg-green-500' : 'bg-gray-300'}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${analysis.suicidality_screened ? 'translate-x-5' : ''}`} />
-                </button>
-              </label>
-              <label className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber-200 cursor-pointer">
-                <span className="text-sm text-amber-900">Safety plan updated</span>
-                <button
-                  type="button"
-                  onClick={() => updateAnalysis('safety_plan_updated', !analysis.safety_plan_updated)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${analysis.safety_plan_updated ? 'bg-green-500' : 'bg-gray-300'}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${analysis.safety_plan_updated ? 'translate-x-5' : ''}`} />
-                </button>
-              </label>
-            </div>
-
-            {/* Risk notes */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-amber-900 mb-1">Risk Notes</label>
-              <textarea
-                rows={3}
-                value={analysis.risk_notes}
-                onChange={e => updateAnalysis('risk_notes', e.target.value)}
-                placeholder="Document any risk-related observations, disclosures, or actions taken..."
-                className="w-full px-4 py-3 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none text-sm bg-white"
-              />
-            </div>
-          </div>
-        </div>
 
         {/* ── 6. Homework ── */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -1064,32 +711,6 @@ function NewSessionForm() {
           </div>
         </div>
 
-        {/* ── 7. Next Session ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-base font-semibold text-therapy-navy mb-5">Planning</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-therapy-navy mb-1">Next Session Focus</label>
-              <textarea
-                rows={3}
-                value={analysis.next_session_focus}
-                onChange={e => updateAnalysis('next_session_focus', e.target.value)}
-                placeholder="What should be prioritised in the next session?"
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent resize-none text-sm bg-gray-50 focus:bg-white transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-therapy-navy mb-1">Follow-up Actions</label>
-              <textarea
-                rows={2}
-                value={analysis.follow_up_actions}
-                onChange={e => updateAnalysis('follow_up_actions', e.target.value)}
-                placeholder="Referrals, letters to write, consultations needed, other actions..."
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent resize-none text-sm bg-gray-50 focus:bg-white transition-colors"
-              />
-            </div>
-          </div>
-        </div>
 
         {/* ── 8. Private Notes ── */}
         <div className="border-2 border-dashed border-gray-300 rounded-xl p-6">

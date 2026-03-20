@@ -2,23 +2,36 @@
 Models package for TherapistHelper
 """
 from .models import (
+    # Enums
+    ClientStatus,
+    AssessmentType,
+    SessionType,
+    SessionModality,
+    SessionStatus,
+    NoteFormat,
     # Client Models
-    ClientBase,
     ClientCreate,
     ClientUpdate,
     ClientResponse,
-    ClientDetail,
-    # Intake Form
-    IntakeForm,
+    # Clinical Assessment Models
+    ClinicalAssessmentCreate,
+    ClinicalAssessmentUpdate,
+    ClinicalAssessmentResponse,
     # Session Models
-    SessionBase,
+    FollowupAction,
     SessionCreate,
     SessionUpdate,
     SessionResponse,
+    # Session Note Models
+    SessionNoteCreate,
+    SessionNoteUpdate,
+    SessionNoteResponse,
     # Transcript Models
     TranscriptUpload,
     TranscriptResponse,
     # Analysis Models
+    IntakeAnalysisRequest,
+    IntakeAnalysisResponse,
     AnalysisRequest,
     AnalysisResponse,
     # Session Helper Models
@@ -26,51 +39,54 @@ from .models import (
     SessionAgendaResponse,
     SessionLogRequest,
     SessionLogResponse,
-    # Note Models
-    NoteBase,
-    NoteCreate,
-    NoteUpdate,
-    NoteResponse,
-    # Attendance Models
-    AttendanceRecord,
-    # Tag Models
-    Tag,
-    ClientTagsResponse,
+    # Note Conversion Models
+    NoteConvertRequest,
+    NoteConvertResponse,
+    # Chat Models
+    ChatMode,
+    PsychologicalSchool,
+    ChatMessage,
+    ClientChatRequest,
+    SchoolChatRequest,
+    ChatResponse,
 )
 
 __all__ = [
-    # Client Models
-    "ClientBase",
+    "ClientStatus",
+    "AssessmentType",
+    "SessionType",
+    "SessionModality",
+    "SessionStatus",
+    "NoteFormat",
     "ClientCreate",
     "ClientUpdate",
     "ClientResponse",
-    "ClientDetail",
-    # Intake Form
-    "IntakeForm",
-    # Session Models
-    "SessionBase",
+    "ClinicalAssessmentCreate",
+    "ClinicalAssessmentUpdate",
+    "ClinicalAssessmentResponse",
+    "FollowupAction",
     "SessionCreate",
     "SessionUpdate",
     "SessionResponse",
-    # Transcript Models
+    "SessionNoteCreate",
+    "SessionNoteUpdate",
+    "SessionNoteResponse",
     "TranscriptUpload",
     "TranscriptResponse",
-    # Analysis Models
+    "IntakeAnalysisRequest",
+    "IntakeAnalysisResponse",
     "AnalysisRequest",
     "AnalysisResponse",
-    # Session Helper Models
     "SessionAgendaRequest",
     "SessionAgendaResponse",
     "SessionLogRequest",
     "SessionLogResponse",
-    # Note Models
-    "NoteBase",
-    "NoteCreate",
-    "NoteUpdate",
-    "NoteResponse",
-    # Attendance Models
-    "AttendanceRecord",
-    # Tag Models
-    "Tag",
-    "ClientTagsResponse",
+    "NoteConvertRequest",
+    "NoteConvertResponse",
+    "ChatMode",
+    "PsychologicalSchool",
+    "ChatMessage",
+    "ClientChatRequest",
+    "SchoolChatRequest",
+    "ChatResponse",
 ]

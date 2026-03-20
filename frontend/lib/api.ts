@@ -3,49 +3,83 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 export interface ClientListItem {
   id: string
   full_name: string
-  age: number
-  gender: string
-  created_at: string
+  preferred_name?: string
+  approximate_age?: number
+  gender_identity?: string
+  pronouns?: string
   status?: string
+  created_at: string
 }
 
 export interface ClientDetail extends ClientListItem {
-  email_encrypted?: string
-  phone_encrypted?: string
-  address_encrypted?: string
-  emergency_contact_encrypted?: string
-  occupation?: string
-  custom_gender?: string
-  tags?: string[]
-  diagnosis?: string
-  medications?: string
-  notes?: string
-  background?: string
+  date_of_birth?: string
+  administrative_sex?: string
+  gender_identity_other?: string
+  sexual_orientation?: string
+  sexual_orientation_other?: string
+  race_values?: string[]
+  race_other?: string
+  ethnicity_values?: string[]
+  ethnicity_other?: string
+  language_codes?: string[]
+  smoking_status?: string
+  marital_status?: string
+  employment_status?: string
+  occupation_title?: string
+  religious_spiritual_affiliation?: string
+  email?: string
+  phone?: string
+  background_summary?: string
   updated_at?: string
+  archived_at?: string
 }
 
 export interface ClientData {
   full_name: string
-  age: number
-  gender: string
-  custom_gender?: string
-  background?: string
-  notes?: string
-  occupation?: string
+  preferred_name?: string
+  date_of_birth?: string
+  approximate_age?: number
+  administrative_sex?: string
+  gender_identity?: string
+  gender_identity_other?: string
+  pronouns?: string
+  sexual_orientation?: string
+  sexual_orientation_other?: string
+  race_values?: string[]
+  race_other?: string
+  ethnicity_values?: string[]
+  ethnicity_other?: string
+  language_codes?: string[]
+  smoking_status?: string
+  marital_status?: string
+  employment_status?: string
+  occupation_title?: string
+  religious_spiritual_affiliation?: string
   email?: string
   phone?: string
+  background_summary?: string
   status?: string
 }
 
 export interface IntakeAnalysis {
+  identification: string
   presenting_problem: string
-  clinical_symptoms: string
-  diagnosis: string
-  case_formulation: string
-  risk_level: string
-  functioning_severity: string
-  personality_patterns: string
-  strengths_resources: string
+  psychiatric_history: string
+  trauma_history: string
+  family_psychiatric_history: string
+  medical_history: string
+  current_medications: string
+  substance_use: string
+  family_history: string
+  social_history: string
+  spiritual_cultural_factors: string
+  developmental_history: string
+  educational_vocational_history: string
+  legal_history: string
+  snap_strengths: string
+  snap_needs: string
+  snap_abilities: string
+  snap_preferences: string
 }
 
 export interface ClientPresentation {
@@ -118,6 +152,39 @@ export interface ChatResponse {
   reply: string
   mode?: string
   school?: string
+}
+
+export interface ClinicalAssessment {
+  id: string
+  client_id: string
+  therapist_id?: string
+  assessment_type: string
+  assessment_date?: string
+  is_current?: boolean
+  version?: number
+  identification_summary?: string
+  presenting_problem?: string
+  psychiatric_history?: string
+  trauma_history?: string
+  family_psychiatric_history?: string
+  medical_history?: string
+  current_medications?: string
+  substance_use?: string
+  family_history?: string
+  social_history?: string
+  spiritual_cultural_factors?: string
+  developmental_history?: string
+  educational_vocational_history?: string
+  legal_history?: string
+  snap_strengths?: string
+  snap_needs?: string
+  snap_abilities?: string
+  snap_preferences?: string
+  diagnosis_impressions?: string
+  risk_summary?: string
+  treatment_goals?: string
+  created_at?: string
+  updated_at?: string
 }
 
 // Alias used by client detail page
@@ -221,6 +288,47 @@ class ApiClient {
     })
   }
 
+  async createClinicalAssessment(data: {
+    client_id: string
+    assessment_type: string
+    identification_summary?: string
+    presenting_problem?: string
+    psychiatric_history?: string
+    trauma_history?: string
+    family_psychiatric_history?: string
+    medical_history?: string
+    current_medications?: string
+    substance_use?: string
+    family_history?: string
+    social_history?: string
+    spiritual_cultural_factors?: string
+    developmental_history?: string
+    educational_vocational_history?: string
+    legal_history?: string
+    snap_strengths?: string
+    snap_needs?: string
+    snap_abilities?: string
+    snap_preferences?: string
+    is_current?: boolean
+  }): Promise<Record<string, unknown>> {
+    return this.request('/api/v1/clinical-assessments/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getClientAssessments(clientId: string): Promise<ClinicalAssessment[]> {
+    return this.request<ClinicalAssessment[]>(`/api/v1/clinical-assessments/client/${clientId}`)
+  }
+
+  async getCurrentAssessment(clientId: string): Promise<ClinicalAssessment | null> {
+    try {
+      return await this.request<ClinicalAssessment>(`/api/v1/clinical-assessments/client/${clientId}/current`)
+    } catch {
+      return null
+    }
+  }
+
   async convertNoteFormat(
     freeText: string,
     targetFormat: 'BIRP' | 'DAP' | 'SOAP'
@@ -268,42 +376,29 @@ class ApiClient {
   async clientChat(
     clientId: string,
     mode: string,
-    messages: ChatMessage[],
-    sessionIds?: string[]
+    messages: ChatMessage[]
   ): Promise<ChatResponse> {
     return this.request<ChatResponse>('/api/v1/ai/chat/client', {
       method: 'POST',
-      body: JSON.stringify({
-        client_id: clientId,
-        mode,
-        messages,
-        session_ids: sessionIds,
-      }),
+      body: JSON.stringify({ client_id: clientId, mode, messages }),
     })
   }
 
   async schoolChat(
+    clientId: string,
     school: string,
-    messages: ChatMessage[],
-    clientContext?: string,
-    sessionIds?: string[]
+    messages: ChatMessage[]
   ): Promise<ChatResponse> {
     return this.request<ChatResponse>('/api/v1/ai/chat/school', {
       method: 'POST',
-      body: JSON.stringify({
-        school,
-        messages,
-        client_context: clientContext,
-        session_ids: sessionIds,
-      }),
+      body: JSON.stringify({ client_id: clientId, school, messages }),
     })
   }
 
   async *streamClientChat(
     clientId: string,
     mode: string,
-    messages: ChatMessage[],
-    sessionIds?: string[]
+    messages: ChatMessage[]
   ): AsyncGenerator<string> {
     const url = `${this.baseUrl}/api/v1/ai/chat/client/stream`
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -313,17 +408,16 @@ class ApiClient {
     const response = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ client_id: clientId, mode, messages, session_ids: sessionIds }),
+      body: JSON.stringify({ client_id: clientId, mode, messages }),
     })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     yield* this._consumeSSE(response)
   }
 
   async *streamSchoolChat(
+    clientId: string,
     school: string,
-    messages: ChatMessage[],
-    clientContext?: string,
-    sessionIds?: string[]
+    messages: ChatMessage[]
   ): AsyncGenerator<string> {
     const url = `${this.baseUrl}/api/v1/ai/chat/school/stream`
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -333,7 +427,7 @@ class ApiClient {
     const response = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ school, messages, client_context: clientContext, session_ids: sessionIds }),
+      body: JSON.stringify({ client_id: clientId, school, messages }),
     })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     yield* this._consumeSSE(response)

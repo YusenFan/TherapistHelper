@@ -189,7 +189,13 @@ export default function ClientsPage() {
                         </div>
                         <div>
                           <h3 className="text-lg font-semibold text-therapy-navy">{client.full_name}</h3>
-                          <p className="text-gray-600 text-sm">{client.age} years • {client.gender}</p>
+                          <p className="text-gray-600 text-sm">
+                            {[
+                              client.approximate_age && `${client.approximate_age} yrs`,
+                              client.gender_identity,
+                              client.pronouns,
+                            ].filter(Boolean).join(' \u00b7 ') || 'No details'}
+                          </p>
                         </div>
                       </div>
                       <span className="px-3 py-1 rounded-full text-xs font-medium bg-therapy-green bg-opacity-20 text-therapy-green">

@@ -5,10 +5,10 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     clients,
     sessions,
+    session_notes,
+    clinical_assessments,
     transcription,
     ai,
-    notes,
-    intake
 )
 
 api_router = APIRouter()
@@ -27,6 +27,20 @@ api_router.include_router(
     tags=["sessions"]
 )
 
+# Session Notes endpoints
+api_router.include_router(
+    session_notes.router,
+    prefix="/session-notes",
+    tags=["session-notes"]
+)
+
+# Clinical Assessment endpoints
+api_router.include_router(
+    clinical_assessments.router,
+    prefix="/clinical-assessments",
+    tags=["clinical-assessments"]
+)
+
 # Transcription endpoints
 api_router.include_router(
     transcription.router,
@@ -39,18 +53,4 @@ api_router.include_router(
     ai.router,
     prefix="/ai",
     tags=["ai"]
-)
-
-# Notes endpoints
-api_router.include_router(
-    notes.router,
-    prefix="/notes",
-    tags=["notes"]
-)
-
-# Intake form endpoints
-api_router.include_router(
-    intake.router,
-    prefix="/intake",
-    tags=["intake"]
 )

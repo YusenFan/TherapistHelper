@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { apiClient, type ChatMessage } from '@/lib/api'
+import { apiClient, type ChatMessage, type ClientListItem } from '@/lib/api'
 
 type PsychSchool = 'CBT' | 'Psychoanalytic' | 'Humanistic' | 'Existential' | 'Gestalt' | 'ACT' | 'DBT' | 'Narrative' | 'SFBT' | 'Adlerian' | 'Behavioral' | 'IPT'
 
@@ -47,12 +47,17 @@ function MarkdownMessage({ content }: { content: string }) {
 
 export default function ChatPage() {
   const [selectedSchool, setSelectedSchool] = useState<PsychSchool | null>(null)
+  const [selectedClientId, setSelectedClientId] = useState<string>('')
+  const [clients, setClients] = useState<ClientListItem[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState('')
-  const [clientContext, setClientContext] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    apiClient.getClients().then(setClients).catch(() => setClients([]))
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -66,7 +71,7 @@ export default function ChatPage() {
   }
 
   const handleSend = async () => {
-    if (!inputText.trim() || !selectedSchool || isLoading) return
+    if (!inputText.trim() || !selectedSchool || !selectedClientId || isLoading) return
 
     const userMessage: ChatMessage = { role: 'user', content: inputText.trim() }
     const newMessages = [...messages, userMessage]
@@ -77,7 +82,7 @@ export default function ChatPage() {
 
     try {
       let accumulated = ''
-      const stream = apiClient.streamSchoolChat(selectedSchool, newMessages, clientContext || undefined)
+      const stream = apiClient.streamSchoolChat(selectedClientId, selectedSchool, newMessages)
       for await (const token of stream) {
         accumulated += token
         setStreamingContent(accumulated)
@@ -145,18 +150,21 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* Optional client context */}
+          {/* Client selector */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <label className="block text-sm font-medium text-therapy-navy mb-2">
-              Client Context <span className="text-gray-400 font-normal">(optional)</span>
+              Select Client <span className="text-red-500">*</span>
             </label>
-            <textarea
-              value={clientContext}
-              onChange={(e) => setClientContext(e.target.value)}
-              placeholder="Paste brief client background, presenting issues, or session notes to give the AI context…"
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-therapy-coral focus:border-transparent resize-none"
-            />
+            <select
+              value={selectedClientId}
+              onChange={(e) => { setSelectedClientId(e.target.value); setMessages([]); setStreamingContent('') }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-therapy-coral focus:border-transparent"
+            >
+              <option value="">Choose a client...</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>{c.full_name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Chat interface */}
@@ -227,7 +235,7 @@ export default function ChatPage() {
                 />
                 <button
                   onClick={handleSend}
-                  disabled={!inputText.trim() || isLoading}
+                  disabled={!inputText.trim() || !selectedClientId || isLoading}
                   className="px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-end"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

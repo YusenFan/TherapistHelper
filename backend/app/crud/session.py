@@ -1,58 +1,94 @@
 """
 Session CRUD operations for Appwrite
+
+Encrypted fields (transcript, summary, next_focus, followup_actions_json)
+are stored with '_encrypted' suffix. Appwrite handles encryption at rest.
 """
 from typing import List, Optional, Dict, Any
 from app.core.appwrite_client import db
 from app.core.config import settings
 from app.models.models import SessionCreate, SessionUpdate
 from datetime import datetime
-import uuid
 import json
+
+
+_ENCRYPTED_FIELD_MAP = {
+    "next_focus": "next_focus_encrypted",
+    "followup_actions": "followup_actions_json_encrypted",
+    "transcript": "transcript_encrypted",
+    "summary": "summary_encrypted",
+}
+
+_ENCRYPTED_FIELD_MAP_REV = {v: k for k, v in _ENCRYPTED_FIELD_MAP.items()}
+
+
+def _to_appwrite(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Map model fields to Appwrite column names and serialize complex types."""
+    result = {}
+    for k, v in data.items():
+        appwrite_key = _ENCRYPTED_FIELD_MAP.get(k, k)
+
+        # Serialize followup_actions list to JSON string
+        if k == "followup_actions" and v is not None:
+            if isinstance(v, list):
+                serialized = []
+                for item in v:
+                    if hasattr(item, "model_dump"):
+                        serialized.append(item.model_dump())
+                    elif isinstance(item, dict):
+                        serialized.append(item)
+                v = json.dumps(serialized)
+            elif isinstance(v, dict):
+                v = json.dumps(v)
+
+        # Convert enums
+        if hasattr(v, "value"):
+            v = v.value
+
+        # Convert datetime
+        if isinstance(v, datetime):
+            v = v.isoformat()
+
+        result[appwrite_key] = v
+    return result
+
+
+def _from_appwrite(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Map Appwrite fields back to model names and deserialize JSON."""
+    for enc_key, plain_key in _ENCRYPTED_FIELD_MAP_REV.items():
+        if enc_key in doc:
+            val = doc[enc_key]
+            # Deserialize followup_actions JSON
+            if plain_key == "followup_actions" and isinstance(val, str) and val:
+                try:
+                    val = json.loads(val)
+                except Exception:
+                    pass
+            doc[plain_key] = val
+    return doc
 
 
 class SessionCRUD:
     """Session CRUD operations using Appwrite"""
 
-    async def create(self, obj_in: SessionCreate) -> Dict[str, Any]:
+    async def create(self, obj_in: SessionCreate, therapist_id: str) -> Dict[str, Any]:
         """Create a new session"""
-        document_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
 
-        def _dump(val):
-            """Serialize a pydantic model or dict to JSON string for Appwrite longtext."""
-            if val is None:
-                return ""
-            if hasattr(val, "model_dump"):
-                return json.dumps(val.model_dump())
-            if isinstance(val, dict):
-                return json.dumps(val)
-            return str(val)
+        data = obj_in.model_dump(exclude_unset=False)
+        data["therapist_id"] = therapist_id
+        data["created_at"] = now
+        data["updated_at"] = now
 
-        document_data = {
-            "client_id": obj_in.client_id,
-            "session_date": obj_in.session_date.isoformat() if hasattr(obj_in.session_date, 'isoformat') else str(obj_in.session_date),
-            "duration_minutes": obj_in.duration_minutes,
-            "session_type": obj_in.session_type,
-            "notes": obj_in.notes or "",
-            "tags": obj_in.tags or [],
-            "transcript": "",
-            "summary": "",
-            "analysis": _dump(obj_in.analysis),
-            "client_presentation": _dump(obj_in.client_presentation),
-            "risk_assessment": _dump(obj_in.risk_assessment),
-            "homework": _dump(obj_in.homework),
-            "planning": _dump(obj_in.planning),
-            "private_notes": obj_in.private_notes or "",
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-
+        document_data = _to_appwrite(data)
         result = db.create_session(document_data)
-        return result
+        return _from_appwrite(result)
 
     async def get(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get session by ID"""
         try:
-            return db.get_session(session_id)
+            result = db.get_session(session_id)
+            return _from_appwrite(result)
         except Exception:
             return None
 
@@ -65,6 +101,8 @@ class SessionCRUD:
         try:
             result = db.get_client_sessions(client_id)
             sessions = result.get("documents", [])
+            for s in sessions:
+                _from_appwrite(s)
             return sessions[:limit] if limit else sessions
         except Exception:
             return []
@@ -74,54 +112,38 @@ class SessionCRUD:
         *,
         skip: int = 0,
         limit: int = 100,
-        client_id: Optional[str] = None
+        client_id: Optional[str] = None,
+        therapist_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get multiple sessions with optional filtering"""
         if client_id:
             return await self.get_client_sessions(client_id, limit)
-        else:
-            # Get all sessions (less common, but possible)
-            try:
-                queries = []
-                result = db.list_documents(
-                    collection_id=settings.COLLECTION_SESSIONS,
-                    queries=queries
-                )
-                sessions = result.get("documents", [])
-                return sessions[skip:skip + limit]
-            except Exception:
-                return []
+        try:
+            queries = []
+            result = db.list_documents(
+                collection_id=settings.COLLECTION_SESSIONS,
+                queries=queries
+            )
+            sessions = result.get("documents", [])
+            for s in sessions:
+                _from_appwrite(s)
+            return sessions[skip:skip + limit]
+        except Exception:
+            return []
 
-    async def update(
-        self,
-        session_id: str,
-        obj_in: SessionUpdate
-    ) -> Optional[Dict[str, Any]]:
+    async def update(self, session_id: str, obj_in: SessionUpdate) -> Optional[Dict[str, Any]]:
         """Update session with new data"""
         try:
-            existing = db.get_session(session_id)
-
-            # Prepare update data
             update_data = obj_in.model_dump(exclude_unset=True)
-
-            # Serialize JSON fields (stored as longtext in Appwrite)
-            _json_fields = ("analysis", "client_presentation", "risk_assessment", "homework", "planning")
-            for field in _json_fields:
-                if field in update_data and update_data[field] is not None:
-                    if isinstance(update_data[field], (dict, list)):
-                        update_data[field] = json.dumps(update_data[field])
-
-            # Update timestamp
             update_data["updated_at"] = datetime.utcnow().isoformat()
 
-            # Update in Appwrite
+            document_data = _to_appwrite(update_data)
             result = db.update_document(
                 collection_id=settings.COLLECTION_SESSIONS,
                 document_id=session_id,
-                document_data=update_data
+                document_data=document_data
             )
-
-            return result
+            return _from_appwrite(result)
         except Exception as e:
             print(f"Error updating session: {e}")
             return None
@@ -136,34 +158,6 @@ class SessionCRUD:
             return True
         except Exception:
             return False
-
-    async def add_transcript(
-        self,
-        session_id: str,
-        transcript: str,
-        language: str,
-        duration: float
-    ) -> Optional[Dict[str, Any]]:
-        """Add transcript to a session"""
-        return await self.update(
-            session_id,
-            SessionUpdate(
-                transcript=transcript,
-                analysis={"language": language, "duration": duration}
-            )
-        )
-
-    async def update_analysis(
-        self,
-        session_id: str,
-        summary: str,
-        analysis: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """Update session with AI analysis"""
-        return await self.update(
-            session_id,
-            SessionUpdate(summary=summary, analysis=analysis)
-        )
 
 
 # Global CRUD instance

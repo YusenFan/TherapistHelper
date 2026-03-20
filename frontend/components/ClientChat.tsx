@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { apiClient, type ChatMessage, type Session } from '@/lib/api'
+import { apiClient, type ChatMessage } from '@/lib/api'
 
 interface ClientChatProps {
   clientId: string
@@ -47,42 +47,13 @@ function MarkdownMessage({ content }: { content: string }) {
   )
 }
 
-function SessionDropdown({ label, sessions, value, onChange, excluded }: {
-  label: string
-  sessions: Session[]
-  value: string
-  onChange: (id: string) => void
-  excluded?: string
-}) {
-  const available = sessions.filter(s => s.id !== excluded)
-  return (
-    <div>
-      <label className="block text-xs font-medium text-therapy-navy mb-1">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-therapy-coral focus:border-transparent"
-      >
-        <option value="">None</option>
-        {available.map((s) => (
-          <option key={s.id} value={s.id}>
-            {new Date(s.session_date).toLocaleDateString()} — {s.session_type}{s.summary ? ' ✓' : ''}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
-}
-
 export default function ClientChat({ clientId }: ClientChatProps) {
   const [mode, setMode] = useState<ChatMode>('investigate')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
-  const [selectedSessions, setSelectedSessions] = useState<string[]>([])
   const [selectedSchool, setSelectedSchool] = useState<PsychSchool>('CBT')
-  const [sessions, setSessions] = useState<Session[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const handleModeChange = (newMode: ChatMode) => {
@@ -90,14 +61,7 @@ export default function ClientChat({ clientId }: ClientChatProps) {
     setMessages([])
     setInputText('')
     setStreamingContent('')
-    setSelectedSessions([])
   }
-
-  useEffect(() => {
-    if (mode === 'supervisor' || mode === 'schools') {
-      apiClient.getClientSessions(clientId).then(setSessions).catch(() => setSessions([]))
-    }
-  }, [mode, clientId])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -118,10 +82,9 @@ export default function ClientChat({ clientId }: ClientChatProps) {
 
       if (mode === 'schools') {
         const stream = apiClient.streamSchoolChat(
+          clientId,
           selectedSchool,
-          newMessages,
-          undefined,
-          selectedSessions.length > 0 ? selectedSessions : undefined
+          newMessages
         )
         for await (const token of stream) {
           accumulated += token
@@ -131,8 +94,7 @@ export default function ClientChat({ clientId }: ClientChatProps) {
         const stream = apiClient.streamClientChat(
           clientId,
           mode,
-          newMessages,
-          mode === 'supervisor' ? selectedSessions : undefined
+          newMessages
         )
         for await (const token of stream) {
           accumulated += token
@@ -180,29 +142,9 @@ export default function ClientChat({ clientId }: ClientChatProps) {
         ))}
       </div>
 
-      {/* Supervisor: session dropdowns */}
-      {mode === 'supervisor' && (
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex-shrink-0 flex gap-3">
-          <SessionDropdown
-            label="Session 1"
-            sessions={sessions}
-            value={selectedSessions[0] ?? ''}
-            onChange={(id) => setSelectedSessions(prev => id ? [id, prev[1] ?? ''].filter(Boolean) : [prev[1] ?? ''].filter(Boolean))}
-            excluded={selectedSessions[1]}
-          />
-          <SessionDropdown
-            label="Session 2"
-            sessions={sessions}
-            value={selectedSessions[1] ?? ''}
-            onChange={(id) => setSelectedSessions(prev => id ? [prev[0] ?? '', id].filter(Boolean) : [prev[0] ?? ''].filter(Boolean))}
-            excluded={selectedSessions[0]}
-          />
-        </div>
-      )}
-
-      {/* Psych Schools: framework + session dropdowns */}
+      {/* Psych Schools: framework selector */}
       {mode === 'schools' && (
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex-shrink-0 flex flex-wrap gap-3 items-end">
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
           <div>
             <label className="block text-xs font-medium text-therapy-navy mb-1">Framework</label>
             <select
@@ -215,20 +157,6 @@ export default function ClientChat({ clientId }: ClientChatProps) {
               ))}
             </select>
           </div>
-          <SessionDropdown
-            label="Session 1"
-            sessions={sessions}
-            value={selectedSessions[0] ?? ''}
-            onChange={(id) => setSelectedSessions(prev => id ? [id, prev[1] ?? ''].filter(Boolean) : [prev[1] ?? ''].filter(Boolean))}
-            excluded={selectedSessions[1]}
-          />
-          <SessionDropdown
-            label="Session 2"
-            sessions={sessions}
-            value={selectedSessions[1] ?? ''}
-            onChange={(id) => setSelectedSessions(prev => id ? [prev[0] ?? '', id].filter(Boolean) : [prev[0] ?? ''].filter(Boolean))}
-            excluded={selectedSessions[0]}
-          />
         </div>
       )}
 

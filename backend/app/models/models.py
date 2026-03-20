@@ -1,68 +1,255 @@
 """
 Pydantic Models for TherapistHelper
 Used with Appwrite database
+
+Encryption note: Sensitive fields are stored with '_encrypted' suffix in Appwrite
+and have Appwrite-native encryption enabled. The API sends/receives plaintext —
+Appwrite handles encryption at rest transparently.
 """
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
-import uuid
+import json
+
+
+# ============================================================================
+# Enums
+# ============================================================================
+
+class ClientStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    DISCHARGED = "discharged"
+
+
+class AssessmentType(str, Enum):
+    INTAKE = "intake"
+    REASSESSMENT = "reassessment"
+    DISCHARGE_SUMMARY = "discharge_summary"
+
+
+class SessionType(str, Enum):
+    INDIVIDUAL = "individual"
+    COUPLE = "couple"
+    FAMILY = "family"
+    GROUP = "group"
+
+
+class SessionModality(str, Enum):
+    IN_PERSON = "in_person"
+    TELEHEALTH = "telehealth"
+    PHONE = "phone"
+    OTHER = "other"
+
+
+class SessionStatus(str, Enum):
+    SCHEDULED = "scheduled"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    NO_SHOW = "no_show"
+
+
+class NoteFormat(str, Enum):
+    FREE = "free"
+    BIRP = "birp"
+    DAP = "dap"
+    SOAP = "soap"
 
 
 # ============================================================================
 # Client Models
 # ============================================================================
 
-class ClientBase(BaseModel):
-    """Base client model"""
-    age: int = Field(..., ge=0, le=120)
-    gender: str = Field(..., max_length=50)
-    custom_gender: Optional[str] = Field(None, max_length=100)
-    race: Optional[str] = Field(None, max_length=50)
-    occupation: Optional[str] = Field(None, max_length=100)
-    phone: Optional[str] = Field(None, max_length=20)
+class ClientCreate(BaseModel):
+    """Model for creating a new client.
+    Plaintext fields (full_name, email, etc.) are mapped to _encrypted
+    Appwrite attributes in the CRUD layer.
+    """
+    full_name: str = Field(..., min_length=1, max_length=200)
+    preferred_name: Optional[str] = Field(None, max_length=200)
+    date_of_birth: Optional[str] = Field(None, max_length=20)
+    approximate_age: Optional[int] = Field(None, ge=0, le=120)
+    administrative_sex: Optional[str] = Field(None, max_length=30)
+    gender_identity: Optional[str] = Field(None, max_length=50)
+    gender_identity_other: Optional[str] = Field(None, max_length=100)
+    pronouns: Optional[str] = Field(None, max_length=50)
+    sexual_orientation: Optional[str] = Field(None, max_length=50)
+    sexual_orientation_other: Optional[str] = Field(None, max_length=100)
+    race_values: Optional[List[str]] = Field(default_factory=list)
+    race_other: Optional[str] = Field(None, max_length=100)
+    ethnicity_values: Optional[List[str]] = Field(default_factory=list)
+    ethnicity_other: Optional[str] = Field(None, max_length=100)
+    language_codes: Optional[List[str]] = Field(default_factory=list)
+    smoking_status: Optional[str] = Field(None, max_length=30)
+    marital_status: Optional[str] = Field(None, max_length=30)
+    employment_status: Optional[str] = Field(None, max_length=30)
+    occupation_title: Optional[str] = Field(None, max_length=100)
+    religious_spiritual_affiliation: Optional[str] = Field(None, max_length=100)
     email: Optional[str] = Field(None, max_length=100)
-    status: str = Field(default="active", max_length=20)  # active, inactive, discharged
-
-
-class ClientCreate(ClientBase):
-    """Model for creating a new client"""
-    full_name: str = Field(..., min_length=1, max_length=100)
-    date_of_birth: Optional[str] = Field(None, max_length=20)  # ISO format
-    background: Optional[str] = None
-    notes: Optional[str] = None
-    tags: Optional[List[str]] = Field(default_factory=list)
+    phone: Optional[str] = Field(None, max_length=20)
+    background_summary: Optional[str] = None
+    status: ClientStatus = ClientStatus.ACTIVE
 
 
 class ClientUpdate(BaseModel):
     """Model for updating a client"""
-    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    age: Optional[int] = Field(None, ge=0, le=120)
-    gender: Optional[str] = Field(None, max_length=50)
-    custom_gender: Optional[str] = Field(None, max_length=100)
-    race: Optional[str] = Field(None, max_length=50)
-    occupation: Optional[str] = Field(None, max_length=100)
+    full_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    preferred_name: Optional[str] = Field(None, max_length=200)
     date_of_birth: Optional[str] = Field(None, max_length=20)
-    background: Optional[str] = None
-    notes: Optional[str] = None
-    phone: Optional[str] = Field(None, max_length=20)
+    approximate_age: Optional[int] = Field(None, ge=0, le=120)
+    administrative_sex: Optional[str] = Field(None, max_length=30)
+    gender_identity: Optional[str] = Field(None, max_length=50)
+    gender_identity_other: Optional[str] = Field(None, max_length=100)
+    pronouns: Optional[str] = Field(None, max_length=50)
+    sexual_orientation: Optional[str] = Field(None, max_length=50)
+    sexual_orientation_other: Optional[str] = Field(None, max_length=100)
+    race_values: Optional[List[str]] = None
+    race_other: Optional[str] = Field(None, max_length=100)
+    ethnicity_values: Optional[List[str]] = None
+    ethnicity_other: Optional[str] = Field(None, max_length=100)
+    language_codes: Optional[List[str]] = None
+    smoking_status: Optional[str] = Field(None, max_length=30)
+    marital_status: Optional[str] = Field(None, max_length=30)
+    employment_status: Optional[str] = Field(None, max_length=30)
+    occupation_title: Optional[str] = Field(None, max_length=100)
+    religious_spiritual_affiliation: Optional[str] = Field(None, max_length=100)
     email: Optional[str] = Field(None, max_length=100)
-    status: Optional[str] = Field(None, max_length=20)
-    tags: Optional[List[str]] = None
+    phone: Optional[str] = Field(None, max_length=20)
+    background_summary: Optional[str] = None
+    status: Optional[ClientStatus] = None
+    archived_at: Optional[datetime] = None
 
 
-class ClientResponse(ClientBase):
-    """Model for client response (including encrypted fields)"""
+class ClientResponse(BaseModel):
+    """Model for client response"""
     id: str
+    therapist_id: Optional[str] = None
     full_name: Optional[str] = None
-    full_name_encrypted: str
-    background_encrypted: Optional[str] = None
-    background: Optional[str] = None  # Decrypted
+    preferred_name: Optional[str] = None
     date_of_birth: Optional[str] = None
-    notes: Optional[str] = None
-    phone: Optional[str] = None
+    approximate_age: Optional[int] = None
+    administrative_sex: Optional[str] = None
+    gender_identity: Optional[str] = None
+    gender_identity_other: Optional[str] = None
+    pronouns: Optional[str] = None
+    sexual_orientation: Optional[str] = None
+    sexual_orientation_other: Optional[str] = None
+    race_values: List[str] = []
+    race_other: Optional[str] = None
+    ethnicity_values: List[str] = []
+    ethnicity_other: Optional[str] = None
+    language_codes: List[str] = []
+    smoking_status: Optional[str] = None
+    marital_status: Optional[str] = None
+    employment_status: Optional[str] = None
+    occupation_title: Optional[str] = None
+    religious_spiritual_affiliation: Optional[str] = None
     email: Optional[str] = None
-    tags: List[str] = []
+    phone: Optional[str] = None
+    background_summary: Optional[str] = None
+    status: Optional[str] = "active"
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    archived_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# Clinical Assessment Models
+# ============================================================================
+
+class ClinicalAssessmentCreate(BaseModel):
+    """Model for creating a clinical assessment"""
+    client_id: str
+    assessment_type: AssessmentType
+    assessment_date: Optional[datetime] = None
+    is_current: bool = True
+    version: int = 1
+    identification_summary: Optional[str] = None
+    presenting_problem: Optional[str] = None
+    psychiatric_history: Optional[str] = None
+    trauma_history: Optional[str] = None
+    family_psychiatric_history: Optional[str] = None
+    medical_history: Optional[str] = None
+    current_medications: Optional[str] = None
+    substance_use: Optional[str] = None
+    family_history: Optional[str] = None
+    social_history: Optional[str] = None
+    spiritual_cultural_factors: Optional[str] = None
+    developmental_history: Optional[str] = None
+    educational_vocational_history: Optional[str] = None
+    legal_history: Optional[str] = None
+    snap_strengths: Optional[str] = None
+    snap_needs: Optional[str] = None
+    snap_abilities: Optional[str] = None
+    snap_preferences: Optional[str] = None
+    diagnosis_impressions: Optional[str] = None
+    risk_summary: Optional[str] = None
+    treatment_goals: Optional[str] = None
+
+
+class ClinicalAssessmentUpdate(BaseModel):
+    """Model for updating a clinical assessment"""
+    assessment_type: Optional[AssessmentType] = None
+    assessment_date: Optional[datetime] = None
+    is_current: Optional[bool] = None
+    version: Optional[int] = None
+    identification_summary: Optional[str] = None
+    presenting_problem: Optional[str] = None
+    psychiatric_history: Optional[str] = None
+    trauma_history: Optional[str] = None
+    family_psychiatric_history: Optional[str] = None
+    medical_history: Optional[str] = None
+    current_medications: Optional[str] = None
+    substance_use: Optional[str] = None
+    family_history: Optional[str] = None
+    social_history: Optional[str] = None
+    spiritual_cultural_factors: Optional[str] = None
+    developmental_history: Optional[str] = None
+    educational_vocational_history: Optional[str] = None
+    legal_history: Optional[str] = None
+    snap_strengths: Optional[str] = None
+    snap_needs: Optional[str] = None
+    snap_abilities: Optional[str] = None
+    snap_preferences: Optional[str] = None
+    diagnosis_impressions: Optional[str] = None
+    risk_summary: Optional[str] = None
+    treatment_goals: Optional[str] = None
+
+
+class ClinicalAssessmentResponse(BaseModel):
+    """Model for clinical assessment response"""
+    id: str
+    client_id: str
+    therapist_id: Optional[str] = None
+    assessment_type: str
+    assessment_date: Optional[datetime] = None
+    is_current: Optional[bool] = False
+    version: Optional[int] = 1
+    identification_summary: Optional[str] = None
+    presenting_problem: Optional[str] = None
+    psychiatric_history: Optional[str] = None
+    trauma_history: Optional[str] = None
+    family_psychiatric_history: Optional[str] = None
+    medical_history: Optional[str] = None
+    current_medications: Optional[str] = None
+    substance_use: Optional[str] = None
+    family_history: Optional[str] = None
+    social_history: Optional[str] = None
+    spiritual_cultural_factors: Optional[str] = None
+    developmental_history: Optional[str] = None
+    educational_vocational_history: Optional[str] = None
+    legal_history: Optional[str] = None
+    snap_strengths: Optional[str] = None
+    snap_needs: Optional[str] = None
+    snap_abilities: Optional[str] = None
+    snap_preferences: Optional[str] = None
+    diagnosis_impressions: Optional[str] = None
+    risk_summary: Optional[str] = None
+    treatment_goals: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -70,165 +257,145 @@ class ClientResponse(ClientBase):
         from_attributes = True
 
 
-class ClientDetail(ClientResponse):
-    """Detailed client model with decrypted sensitive data"""
-    full_name: str  # Decrypted
-    background: Optional[str] = None  # Decrypted
-
-
-# ============================================================================
-# Intake Form Models
-# ============================================================================
-
-class IntakeForm(BaseModel):
-    """Client intake form with detailed background"""
-    client_id: str
-
-    # Family structure and relationships
-    family_structure: Optional[str] = Field(None, max_length=1000)
-    parents_relationship: Optional[str] = Field(None, max_length=1000)
-
-    # Major life events
-    major_life_events: Optional[str] = Field(None, max_length=2000)
-
-    # Health status
-    physical_health: Optional[str] = Field(None, max_length=1000)
-    mental_health: Optional[str] = Field(None, max_length=1000)
-    medications: Optional[str] = Field(None, max_length=1000)
-
-    # Work and education
-    education_status: Optional[str] = Field(None, max_length=500)
-    work_status: Optional[str] = Field(None, max_length=500)
-
-    # Relationship status
-    relationship_status: Optional[str] = Field(None, max_length=500)
-
-    # Additional notes
-    additional_notes: Optional[str] = Field(None, max_length=2000)
-
-
 # ============================================================================
 # Session Models
 # ============================================================================
 
-class SessionBase(BaseModel):
-    """Base session model"""
+class FollowupAction(BaseModel):
+    """A single follow-up action item"""
+    task: str
+    owner: Optional[str] = None
+    due_date: Optional[str] = None
+    status: str = "pending"
+
+
+class SessionCreate(BaseModel):
+    """Model for creating a new session"""
     client_id: str
     session_date: datetime = Field(default_factory=datetime.utcnow)
-    duration_minutes: int = Field(..., ge=1, le=180)
-    session_type: str = Field(default="individual", max_length=20)  # individual, family, couple
-
-
-# ============================================================================
-# Session Clinical Sub-Models
-# ============================================================================
-
-class ClientPresentation(BaseModel):
-    """How the client presented during the session"""
-    mood_rating: Optional[int] = Field(None, ge=1, le=10)  # 1-10 scale
-    affect: Optional[str] = Field(None, max_length=50)     # e.g. appropriate, flat, labile
-    tags: List[str] = Field(default_factory=list)           # presenting issues / themes
-    notes: Optional[str] = None                             # free text observations
-
-
-class RiskAssessment(BaseModel):
-    """Session risk assessment"""
-    risk_level: Optional[str] = Field(None, max_length=20)        # none, low, moderate, high, imminent
-    suicidal_ideation: Optional[str] = Field(None, max_length=50) # none, passive, active_without_plan, active_with_plan
-    self_harm: Optional[bool] = None
-    homicidal_ideation: Optional[bool] = None
-    protective_factors: List[str] = Field(default_factory=list)
-    notes: Optional[str] = None
-
-
-class HomeworkItem(BaseModel):
-    task: str
-    completed: bool = False
-
-
-class Homework(BaseModel):
-    """Homework assigned / reviewed"""
-    items: List[HomeworkItem] = Field(default_factory=list)
-    notes: Optional[str] = None
-
-
-class Planning(BaseModel):
-    """Session planning / treatment goals"""
-    goals: List[str] = Field(default_factory=list)
-    interventions: List[str] = Field(default_factory=list)
-    next_session_focus: Optional[str] = None
-    notes: Optional[str] = None
-
-
-class SessionCreate(SessionBase):
-    """Model for creating a new session"""
-    notes: Optional[str] = None
-    tags: Optional[List[str]] = Field(default_factory=list)
-    analysis: Optional[Dict[str, Any]] = None
-    client_presentation: Optional[ClientPresentation] = None
-    risk_assessment: Optional[RiskAssessment] = None
-    homework: Optional[Homework] = None
-    planning: Optional[Planning] = None
-    private_notes: Optional[str] = None
+    duration_minutes: Optional[int] = Field(None, ge=1, le=480)
+    session_type: SessionType = SessionType.INDIVIDUAL
+    modality: SessionModality = SessionModality.IN_PERSON
+    status: SessionStatus = SessionStatus.SCHEDULED
+    selected_note_format: Optional[NoteFormat] = None
+    next_focus: Optional[str] = None
+    followup_actions: Optional[List[FollowupAction]] = None
+    transcript: Optional[str] = None
+    summary: Optional[str] = None
 
 
 class SessionUpdate(BaseModel):
     """Model for updating a session"""
-    duration_minutes: Optional[int] = Field(None, ge=1, le=180)
-    session_type: Optional[str] = Field(None, max_length=20)
-    notes: Optional[str] = None
-    tags: Optional[List[str]] = None
+    session_date: Optional[datetime] = None
+    duration_minutes: Optional[int] = Field(None, ge=1, le=480)
+    session_type: Optional[SessionType] = None
+    modality: Optional[SessionModality] = None
+    status: Optional[SessionStatus] = None
+    selected_note_format: Optional[NoteFormat] = None
+    next_focus: Optional[str] = None
+    followup_actions: Optional[List[FollowupAction]] = None
     transcript: Optional[str] = None
     summary: Optional[str] = None
-    analysis: Optional[Dict[str, Any]] = None
-    client_presentation: Optional[ClientPresentation] = None
-    risk_assessment: Optional[RiskAssessment] = None
-    homework: Optional[Homework] = None
-    planning: Optional[Planning] = None
-    private_notes: Optional[str] = None
 
 
-def _parse_json_field(v: Any) -> Optional[Any]:
-    """Helper to parse a JSON string field into a dict/object."""
-    if isinstance(v, str):
-        if not v:
-            return None
-        try:
-            import json
-            return json.loads(v)
-        except Exception:
-            return None
-    return v
-
-
-class SessionResponse(SessionBase):
+class SessionResponse(BaseModel):
     """Model for session response"""
     id: str
+    client_id: str
+    therapist_id: Optional[str] = None
+    session_date: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
+    session_type: Optional[str] = "individual"
+    modality: Optional[str] = "in_person"
+    status: Optional[str] = "scheduled"
+    selected_note_format: Optional[str] = None
+    next_focus: Optional[str] = None
+    followup_actions: Optional[List[FollowupAction]] = None
     transcript: Optional[str] = None
     summary: Optional[str] = None
-    analysis: Optional[Dict[str, Any]] = None
-    notes: Optional[str] = None
-    tags: List[str] = []
-    client_presentation: Optional[ClientPresentation] = None
-    risk_assessment: Optional[RiskAssessment] = None
-    homework: Optional[Homework] = None
-    planning: Optional[Planning] = None
-    private_notes: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    @field_validator("analysis", "client_presentation", "risk_assessment", "homework", "planning", mode="before")
+    @field_validator("followup_actions", mode="before")
     @classmethod
-    def parse_json_fields(cls, v):
+    def parse_followup_actions(cls, v):
         if isinstance(v, str):
             if not v:
                 return None
             try:
-                import json
                 return json.loads(v)
             except Exception:
                 return None
         return v
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# Session Note Models
+# ============================================================================
+
+class SessionNoteCreate(BaseModel):
+    """Model for creating a session note"""
+    session_id: str
+    client_id: str
+    note_format: NoteFormat
+    free_content: Optional[str] = None
+    birp_behavior: Optional[str] = None
+    birp_intervention: Optional[str] = None
+    birp_response: Optional[str] = None
+    birp_plan: Optional[str] = None
+    dap_data: Optional[str] = None
+    dap_assessment: Optional[str] = None
+    dap_plan: Optional[str] = None
+    soap_subjective: Optional[str] = None
+    soap_objective: Optional[str] = None
+    soap_assessment: Optional[str] = None
+    soap_plan: Optional[str] = None
+    is_finalized: bool = False
+
+
+class SessionNoteUpdate(BaseModel):
+    """Model for updating a session note"""
+    note_format: Optional[NoteFormat] = None
+    free_content: Optional[str] = None
+    birp_behavior: Optional[str] = None
+    birp_intervention: Optional[str] = None
+    birp_response: Optional[str] = None
+    birp_plan: Optional[str] = None
+    dap_data: Optional[str] = None
+    dap_assessment: Optional[str] = None
+    dap_plan: Optional[str] = None
+    soap_subjective: Optional[str] = None
+    soap_objective: Optional[str] = None
+    soap_assessment: Optional[str] = None
+    soap_plan: Optional[str] = None
+    is_finalized: Optional[bool] = None
+
+
+class SessionNoteResponse(BaseModel):
+    """Model for session note response"""
+    id: str
+    session_id: str
+    client_id: str
+    therapist_id: Optional[str] = None
+    note_format: str
+    free_content: Optional[str] = None
+    birp_behavior: Optional[str] = None
+    birp_intervention: Optional[str] = None
+    birp_response: Optional[str] = None
+    birp_plan: Optional[str] = None
+    dap_data: Optional[str] = None
+    dap_assessment: Optional[str] = None
+    dap_plan: Optional[str] = None
+    soap_subjective: Optional[str] = None
+    soap_objective: Optional[str] = None
+    soap_assessment: Optional[str] = None
+    soap_plan: Optional[str] = None
+    is_finalized: Optional[bool] = False
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -242,7 +409,7 @@ class TranscriptUpload(BaseModel):
     """Model for transcript upload"""
     client_id: str
     audio_file_path: str
-    language: Optional[str] = Field(None, max_length=10)  # e.g., 'en', 'zh'
+    language: Optional[str] = Field(None, max_length=10)
 
 
 class TranscriptResponse(BaseModel):
@@ -268,22 +435,32 @@ class IntakeAnalysisRequest(BaseModel):
 
 
 class IntakeAnalysisResponse(BaseModel):
-    """Structured 8-field clinical intake assessment"""
-    presenting_problem: str
-    clinical_symptoms: str
-    diagnosis: str
-    case_formulation: str
-    risk_level: str
-    functioning_severity: str
-    personality_patterns: str
-    strengths_resources: str
+    """Structured clinical intake assessment matching clinical_assessments schema"""
+    identification: Optional[str] = ""
+    presenting_problem: Optional[str] = ""
+    psychiatric_history: Optional[str] = ""
+    trauma_history: Optional[str] = ""
+    family_psychiatric_history: Optional[str] = ""
+    medical_history: Optional[str] = ""
+    current_medications: Optional[str] = ""
+    substance_use: Optional[str] = ""
+    family_history: Optional[str] = ""
+    social_history: Optional[str] = ""
+    spiritual_cultural_factors: Optional[str] = ""
+    developmental_history: Optional[str] = ""
+    educational_vocational_history: Optional[str] = ""
+    legal_history: Optional[str] = ""
+    snap_strengths: Optional[str] = ""
+    snap_needs: Optional[str] = ""
+    snap_abilities: Optional[str] = ""
+    snap_preferences: Optional[str] = ""
 
 
 class AnalysisRequest(BaseModel):
     """Model for AI analysis request"""
     transcript: str
     client_context: Optional[Dict[str, Any]] = None
-    analysis_type: str = Field(default="full", max_length=20)  # full, summary, insights
+    analysis_type: str = Field(default="full", max_length=20)
 
 
 class AnalysisResponse(BaseModel):
@@ -330,72 +507,6 @@ class SessionLogResponse(BaseModel):
     homework_assigned: Optional[str]
     next_session_focus: str
     raw_response: Optional[str] = None
-
-
-# ============================================================================
-# Note Models
-# ============================================================================
-
-class NoteBase(BaseModel):
-    """Base note model"""
-    client_id: str
-    note_type: str = Field(..., max_length=20)  # general, insight, reminder
-
-
-class NoteCreate(NoteBase):
-    """Model for creating a note"""
-    content: str = Field(..., min_length=1)
-    tags: Optional[List[str]] = Field(default_factory=list)
-
-
-class NoteUpdate(BaseModel):
-    """Model for updating a note"""
-    content: Optional[str] = Field(None, min_length=1)
-    tags: Optional[List[str]] = None
-
-
-class NoteResponse(NoteBase):
-    """Model for note response"""
-    id: str
-    content: str
-    tags: List[str] = []
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-
-# ============================================================================
-# Attendance Models
-# ============================================================================
-
-class AttendanceRecord(BaseModel):
-    """Client attendance record"""
-    id: str
-    client_id: str
-    session_id: str
-    scheduled_date: datetime
-    attended: bool
-    cancellation_reason: Optional[str] = None
-    created_at: Optional[datetime] = None
-
-
-# ============================================================================
-# Tag Models
-# ============================================================================
-
-class Tag(BaseModel):
-    """Client tag"""
-    id: str
-    name: str
-    color: Optional[str] = Field(None, max_length=7)  # Hex color
-
-
-class ClientTagsResponse(BaseModel):
-    """Response with all client tags"""
-    tags: List[str]
-    total_clients: int
 
 
 # ============================================================================
@@ -454,14 +565,12 @@ class ClientChatRequest(BaseModel):
     client_id: str
     mode: ChatMode
     messages: List[ChatMessage]
-    session_ids: Optional[List[str]] = None
 
 
 class SchoolChatRequest(BaseModel):
+    client_id: str
     school: PsychologicalSchool
     messages: List[ChatMessage]
-    client_context: Optional[str] = None
-    session_ids: Optional[List[str]] = None
 
 
 class ChatResponse(BaseModel):

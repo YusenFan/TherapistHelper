@@ -354,19 +354,6 @@ class AppwriteDB:
             [Query.equal("client_id", client_id)]
         )
 
-    # ==================== NOTE METHODS ====================
-
-    def create_note(self, note_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new note"""
-        return self.create_row(settings.COLLECTION_NOTES, note_data)
-
-    def get_client_notes(self, client_id: str) -> Dict[str, Any]:
-        """Get all notes for a client"""
-        from appwrite.query import Query
-        return self.list_rows(
-            settings.COLLECTION_NOTES,
-            [Query.equal("client_id", client_id)]
-        )
 
 
 # Global Appwrite database instance

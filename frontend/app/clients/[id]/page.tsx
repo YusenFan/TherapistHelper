@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { apiClient, type ClientResponse, type ClientData, type Session } from '@/lib/api'
+import { apiClient, type ClientResponse, type ClientData, type Session, type ClinicalAssessment } from '@/lib/api'
 import ClientChat from '@/components/ClientChat'
 
 interface ClientProfileProps {
@@ -14,16 +14,19 @@ interface ClientProfileProps {
 
 interface FormData {
   full_name: string
-  age: string
-  gender: string
-  custom_gender: string
-  background: string
+  preferred_name: string
+  approximate_age: string
+  gender_identity: string
+  gender_identity_other: string
+  pronouns: string
+  background_summary: string
+  email: string
+  phone: string
 }
 
 interface FormErrors {
   full_name?: string
-  age?: string
-  gender?: string
+  approximate_age?: string
   general?: string
 }
 
@@ -37,19 +40,28 @@ export default function ClientProfile({ params }: ClientProfileProps) {
   const [sessions, setSessions] = useState<Session[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [sessionsError, setSessionsError] = useState<string | null>(null)
+  const [assessment, setAssessment] = useState<ClinicalAssessment | null>(null)
+  const [assessmentLoading, setAssessmentLoading] = useState(false)
+  const [assessmentError, setAssessmentError] = useState<string | null>(null)
   
   // Edit form state
   const [editMode, setEditMode] = useState(false)
   const [formData, setFormData] = useState<FormData>({
     full_name: '',
-    age: '',
-    gender: '',
-    custom_gender: '',
-    background: ''
+    preferred_name: '',
+    approximate_age: '',
+    gender_identity: '',
+    gender_identity_other: '',
+    pronouns: '',
+    background_summary: '',
+    email: '',
+    phone: '',
   })
   const [formErrors, setFormErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [updateSuccess, setUpdateSuccess] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const maxBackgroundLength = 2400
 
@@ -63,11 +75,15 @@ export default function ClientProfile({ params }: ClientProfileProps) {
         
         // Initialize form data with client data
         setFormData({
-          full_name: client.full_name,
-          age: client.age.toString(),
-          gender: client.gender,
-          custom_gender: client.custom_gender || '',
-          background: client.background || ''
+          full_name: client.full_name || '',
+          preferred_name: client.preferred_name || '',
+          approximate_age: client.approximate_age?.toString() || '',
+          gender_identity: client.gender_identity || '',
+          gender_identity_other: client.gender_identity_other || '',
+          pronouns: client.pronouns || '',
+          background_summary: client.background_summary || '',
+          email: client.email || '',
+          phone: client.phone || '',
         })
       } catch (err) {
         console.error('Failed to fetch client:', err)
@@ -103,11 +119,23 @@ export default function ClientProfile({ params }: ClientProfileProps) {
     }
   }, [activeTab, params.id])
 
-  const genderOptions = [
-    { value: 'female', label: 'Female' },
-    { value: 'male', label: 'Male' },
-    { value: 'non-binary', label: 'Non-binary' },
-  ]
+  useEffect(() => {
+    if (activeTab === 'assessment' && params.id) {
+      const fetchAssessment = async () => {
+        try {
+          setAssessmentLoading(true)
+          setAssessmentError(null)
+          const current = await apiClient.getCurrentAssessment(params.id)
+          setAssessment(current)
+        } catch (err) {
+          setAssessmentError(err instanceof Error ? err.message : 'Failed to load assessment')
+        } finally {
+          setAssessmentLoading(false)
+        }
+      }
+      fetchAssessment()
+    }
+  }, [activeTab, params.id])
 
   // Form validation
   const validateField = (name: string, value: string) => {
@@ -124,23 +152,11 @@ export default function ClientProfile({ params }: ClientProfileProps) {
         }
         break
 
-      case 'age':
-        if (!value) {
-          newErrors.age = 'Age is required'
-        } else if (isNaN(Number(value))) {
-          newErrors.age = 'Age must be a number'
-        } else if (Number(value) < 0 || Number(value) > 120) {
-          newErrors.age = 'Age must be between 0 and 120'
+      case 'approximate_age':
+        if (value && (isNaN(Number(value)) || Number(value) < 0 || Number(value) > 120)) {
+          newErrors.approximate_age = 'Age must be between 0 and 120'
         } else {
-          delete newErrors.age
-        }
-        break
-
-      case 'gender':
-        if (!value) {
-          newErrors.gender = 'Gender selection is required'
-        } else {
-          delete newErrors.gender
+          delete newErrors.approximate_age
         }
         break
 
@@ -167,13 +183,8 @@ export default function ClientProfile({ params }: ClientProfileProps) {
     if (!formData.full_name.trim()) {
       newErrors.full_name = 'Client name is required'
     }
-    if (!formData.age) {
-      newErrors.age = 'Age is required'
-    } else if (isNaN(Number(formData.age)) || Number(formData.age) < 0 || Number(formData.age) > 120) {
-      newErrors.age = 'Please enter a valid age (0-120)'
-    }
-    if (!formData.gender) {
-      newErrors.gender = 'Gender selection is required'
+    if (formData.approximate_age && (isNaN(Number(formData.approximate_age)) || Number(formData.approximate_age) < 0 || Number(formData.approximate_age) > 120)) {
+      newErrors.approximate_age = 'Please enter a valid age (0-120)'
     }
 
     setFormErrors(newErrors)
@@ -189,51 +200,69 @@ export default function ClientProfile({ params }: ClientProfileProps) {
     if (!clientData) return
 
     setIsSubmitting(true)
-    
+
     try {
-      // Prepare client data for API
       const updateData: Partial<ClientData> = {
         full_name: formData.full_name,
-        age: parseInt(formData.age),
-        gender: formData.gender,
-        custom_gender: formData.gender === 'other' ? formData.custom_gender : undefined,
-        background: formData.background || undefined
+        preferred_name: formData.preferred_name || undefined,
+        approximate_age: formData.approximate_age ? parseInt(formData.approximate_age) : undefined,
+        gender_identity: formData.gender_identity || undefined,
+        gender_identity_other: formData.gender_identity === 'other' ? formData.gender_identity_other || undefined : undefined,
+        pronouns: formData.pronouns || undefined,
+        background_summary: formData.background_summary || undefined,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
       }
-      
-      // Update client via API
+
       const updatedClient = await apiClient.updateClient(clientData.id, updateData)
-      
-      // Update local state with new data
       setClientData(updatedClient)
       setUpdateSuccess(true)
       setEditMode(false)
-      
-      // Clear any previous errors
       setFormErrors({})
     } catch (error) {
       console.error('Failed to update client:', error)
-      setFormErrors({ 
-        general: error instanceof Error 
-          ? error.message 
-          : 'Failed to update client profile. Please try again.' 
+      setFormErrors({
+        general: error instanceof Error
+          ? error.message
+          : 'Failed to update client profile. Please try again.'
       })
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const handleDeleteClient = async () => {
+    if (!clientData) return
+    setIsDeleting(true)
+    try {
+      await apiClient.deleteClient(clientData.id)
+      router.push('/clients')
+    } catch (err) {
+      console.error('Failed to delete client:', err)
+      setFormErrors({
+        general: err instanceof Error ? err.message : 'Failed to delete client. Please try again.'
+      })
+      setShowDeleteConfirm(false)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const handleCancelEdit = () => {
     if (!clientData) return
-    
-    // Reset form data to original values
+
     setFormData({
-      full_name: clientData.full_name,
-      age: clientData.age.toString(),
-      gender: clientData.gender,
-      custom_gender: clientData.custom_gender || '',
-      background: clientData.background || ''
+      full_name: clientData.full_name || '',
+      preferred_name: clientData.preferred_name || '',
+      approximate_age: clientData.approximate_age?.toString() || '',
+      gender_identity: clientData.gender_identity || '',
+      gender_identity_other: clientData.gender_identity_other || '',
+      pronouns: clientData.pronouns || '',
+      background_summary: clientData.background_summary || '',
+      email: clientData.email || '',
+      phone: clientData.phone || '',
     })
-    
+
     setFormErrors({})
     setEditMode(false)
     setUpdateSuccess(false)
@@ -241,6 +270,7 @@ export default function ClientProfile({ params }: ClientProfileProps) {
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: 'overview' },
+    { id: 'assessment', name: 'Assessment', icon: 'assessment' },
     { id: 'sessions', name: 'Sessions', icon: 'sessions' },
     { id: 'insights', name: 'AI Insights', icon: 'insights' },
     { id: 'chat', name: 'Chat', icon: 'chat' },
@@ -253,6 +283,12 @@ export default function ClientProfile({ params }: ClientProfileProps) {
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        )
+      case 'assessment':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         )
       case 'sessions':
@@ -301,11 +337,10 @@ export default function ClientProfile({ params }: ClientProfileProps) {
     })
   }
 
-  const formatGender = (gender: string, customGender?: string) => {
-    if (gender === 'other' && customGender) {
-      return customGender
-    }
-    return gender.charAt(0).toUpperCase() + gender.slice(1).replace('-', ' ')
+  const formatGenderIdentity = (gi?: string, giOther?: string) => {
+    if (!gi) return null
+    if (gi === 'other' && giOther) return giOther
+    return gi.charAt(0).toUpperCase() + gi.slice(1).replace(/_/g, ' ')
   }
 
   // Loading state
@@ -434,9 +469,18 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                   <span className="text-white text-xl font-medium">{getInitials(clientData.full_name)}</span>
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-therapy-navy">{clientData.full_name}</h1>
+                  <h1 className="text-3xl font-bold text-therapy-navy">
+                    {clientData.full_name}
+                    {clientData.preferred_name && <span className="text-lg text-gray-500 font-normal ml-2">({clientData.preferred_name})</span>}
+                  </h1>
                   <div className="flex items-center space-x-4 mt-1">
-                    <span className="text-gray-600">{clientData.age} years • {formatGender(clientData.gender, clientData.custom_gender)}</span>
+                    <span className="text-gray-600">
+                      {[
+                        clientData.approximate_age && `${clientData.approximate_age} yrs`,
+                        formatGenderIdentity(clientData.gender_identity, clientData.gender_identity_other),
+                        clientData.pronouns,
+                      ].filter(Boolean).join(' \u00b7 ') || 'No details'}
+                    </span>
                     <span className="px-3 py-1 rounded-full text-xs font-medium bg-therapy-green bg-opacity-20 text-therapy-green">
                       Active
                     </span>
@@ -493,14 +537,42 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                     <label className="text-sm font-medium text-gray-600">Full Name</label>
                     <p className="text-therapy-navy">{clientData.full_name}</p>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Age</label>
-                    <p className="text-therapy-navy">{clientData.age} years</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Gender</label>
-                    <p className="text-therapy-navy">{formatGender(clientData.gender, clientData.custom_gender)}</p>
-                  </div>
+                  {clientData.preferred_name && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Preferred Name</label>
+                      <p className="text-therapy-navy">{clientData.preferred_name}</p>
+                    </div>
+                  )}
+                  {clientData.approximate_age != null && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Age</label>
+                      <p className="text-therapy-navy">{clientData.approximate_age} years</p>
+                    </div>
+                  )}
+                  {clientData.gender_identity && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Gender Identity</label>
+                      <p className="text-therapy-navy">{formatGenderIdentity(clientData.gender_identity, clientData.gender_identity_other)}</p>
+                    </div>
+                  )}
+                  {clientData.pronouns && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Pronouns</label>
+                      <p className="text-therapy-navy">{clientData.pronouns}</p>
+                    </div>
+                  )}
+                  {clientData.email && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Email</label>
+                      <p className="text-therapy-navy">{clientData.email}</p>
+                    </div>
+                  )}
+                  {clientData.phone && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Phone</label>
+                      <p className="text-therapy-navy">{clientData.phone}</p>
+                    </div>
+                  )}
                   <div>
                     <label className="text-sm font-medium text-gray-600">Client ID</label>
                     <p className="text-therapy-navy">#{clientData.id}</p>
@@ -511,8 +583,8 @@ export default function ClientProfile({ params }: ClientProfileProps) {
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-therapy-navy mb-4">Background Information</h3>
                 <div className="prose max-w-none">
-                  {clientData.background ? (
-                    <p className="text-therapy-navy leading-relaxed whitespace-pre-wrap">{clientData.background}</p>
+                  {clientData.background_summary ? (
+                    <p className="text-therapy-navy leading-relaxed whitespace-pre-wrap">{clientData.background_summary}</p>
                   ) : (
                     <p className="text-gray-400 italic">No background information available</p>
                   )}
@@ -543,6 +615,112 @@ export default function ClientProfile({ params }: ClientProfileProps) {
 
             
             </div>
+          </div>
+        )}
+
+        {activeTab === 'assessment' && (
+          <div>
+            {assessmentLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-therapy-coral"></div>
+                <span className="ml-3 text-therapy-navy">Loading assessment...</span>
+              </div>
+            ) : assessmentError ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-red-800">{assessmentError}</p>
+              </div>
+            ) : !assessment ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-lg font-semibold text-therapy-navy mb-2">No Assessment Found</h3>
+                <p className="text-gray-600">No clinical assessment has been created for this client yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Assessment Header */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold text-therapy-navy">
+                      Clinical Assessment
+                    </h3>
+                    <div className="flex items-center space-x-3">
+                      {assessment.is_current && (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-therapy-green bg-opacity-20 text-therapy-green">
+                          Current
+                        </span>
+                      )}
+                      {assessment.version && (
+                        <span className="text-sm text-gray-500">Version {assessment.version}</span>
+                      )}
+                    </div>
+                  </div>
+                  {assessment.created_at && (
+                    <p className="text-sm text-gray-500">Created {formatDate(assessment.created_at)}</p>
+                  )}
+                </div>
+
+                {/* Clinical Content Sections */}
+                {[
+                  { label: 'Identification Summary', value: assessment.identification_summary },
+                  { label: 'Presenting Problem', value: assessment.presenting_problem },
+                  { label: 'Psychiatric History', value: assessment.psychiatric_history },
+                  { label: 'Trauma History', value: assessment.trauma_history },
+                  { label: 'Family Psychiatric History', value: assessment.family_psychiatric_history },
+                  { label: 'Medical History', value: assessment.medical_history },
+                  { label: 'Current Medications', value: assessment.current_medications },
+                  { label: 'Substance Use', value: assessment.substance_use },
+                  { label: 'Family History', value: assessment.family_history },
+                  { label: 'Social History', value: assessment.social_history },
+                  { label: 'Spiritual & Cultural Factors', value: assessment.spiritual_cultural_factors },
+                  { label: 'Developmental History', value: assessment.developmental_history },
+                  { label: 'Educational & Vocational History', value: assessment.educational_vocational_history },
+                  { label: 'Legal History', value: assessment.legal_history },
+                  { label: 'Diagnosis Impressions', value: assessment.diagnosis_impressions },
+                  { label: 'Risk Summary', value: assessment.risk_summary },
+                  { label: 'Treatment Goals', value: assessment.treatment_goals },
+                ].filter(section => section.value).map((section) => (
+                  <div key={section.label} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h4 className="text-sm font-semibold text-therapy-navy uppercase tracking-wide mb-3">{section.label}</h4>
+                    <p className="text-therapy-navy leading-relaxed whitespace-pre-wrap">{section.value}</p>
+                  </div>
+                ))}
+
+                {/* SNAP Assessment */}
+                {(assessment.snap_strengths || assessment.snap_needs || assessment.snap_abilities || assessment.snap_preferences) && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h4 className="text-sm font-semibold text-therapy-navy uppercase tracking-wide mb-4">SNAP Assessment</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {assessment.snap_strengths && (
+                        <div>
+                          <h5 className="text-sm font-medium text-therapy-coral mb-2">Strengths</h5>
+                          <p className="text-therapy-navy text-sm leading-relaxed whitespace-pre-wrap">{assessment.snap_strengths}</p>
+                        </div>
+                      )}
+                      {assessment.snap_needs && (
+                        <div>
+                          <h5 className="text-sm font-medium text-therapy-coral mb-2">Needs</h5>
+                          <p className="text-therapy-navy text-sm leading-relaxed whitespace-pre-wrap">{assessment.snap_needs}</p>
+                        </div>
+                      )}
+                      {assessment.snap_abilities && (
+                        <div>
+                          <h5 className="text-sm font-medium text-therapy-coral mb-2">Abilities</h5>
+                          <p className="text-therapy-navy text-sm leading-relaxed whitespace-pre-wrap">{assessment.snap_abilities}</p>
+                        </div>
+                      )}
+                      {assessment.snap_preferences && (
+                        <div>
+                          <h5 className="text-sm font-medium text-therapy-coral mb-2">Preferences</h5>
+                          <p className="text-therapy-navy text-sm leading-relaxed whitespace-pre-wrap">{assessment.snap_preferences}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -658,105 +836,92 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                 
                 <div className="space-y-6">
                   {/* Full Name */}
-                  <div>
-                    <label htmlFor="fullName" className="block text-sm font-medium text-therapy-navy mb-2">
-                      Client Name <span className="text-red-500">*</span>
-                    </label>
-                    {editMode ? (
-                      <input
-                        type="text"
-                        id="fullName"
-                        name="fullName"
-                        value={formData.full_name}
-                        onChange={(e) => handleInputChange('full_name', e.target.value)}
-                        placeholder="e.g. Jordan Smith"
-                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${
-                          formErrors.full_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
-                      />
-                    ) : (
-                      <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.full_name}</p>
-                    )}
-                    {formErrors.full_name && (
-                      <p className="mt-1 text-sm text-red-600">{formErrors.full_name}</p>
-                    )}
-                  </div>
-
-                  {/* Age */}
-                  <div>
-                    <label htmlFor="age" className="block text-sm font-medium text-therapy-navy mb-2">
-                      Age <span className="text-red-500">*</span>
-                    </label>
-                    {editMode ? (
-                      <input
-                        type="number"
-                        id="age"
-                        name="age"
-                        min="0"
-                        max="120"
-                        value={formData.age}
-                        onChange={(e) => handleInputChange('age', e.target.value)}
-                        placeholder="25"
-                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${
-                          formErrors.age ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
-                      />
-                    ) : (
-                      <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.age} years</p>
-                    )}
-                    {formErrors.age && (
-                      <p className="mt-1 text-sm text-red-600">{formErrors.age}</p>
-                    )}
-                  </div>
-
-                  {/* Gender */}
-                  <div>
-                    <fieldset>
-                      <legend className="block text-sm font-medium text-therapy-navy mb-4">
-                        Gender <span className="text-red-500">*</span>
-                      </legend>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="fullName" className="block text-sm font-medium text-therapy-navy mb-2">
+                        Client Name <span className="text-red-500">*</span>
+                      </label>
                       {editMode ? (
-                        <div className="space-y-3">
-                          {genderOptions.map((option) => (
-                            <div key={option.value} className="flex items-center">
-                              <input
-                                type="radio"
-                                id={`gender-${option.value}`}
-                                name="gender"
-                                value={option.value}
-                                checked={formData.gender === option.value}
-                                onChange={(e) => handleInputChange('gender', e.target.value)}
-                                className="h-4 w-4 text-therapy-coral focus:ring-therapy-coral border-gray-300"
-                              />
-                              <label htmlFor={`gender-${option.value}`} className="ml-3 text-sm text-therapy-navy">
-                                {option.label}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
+                        <input
+                          type="text"
+                          id="fullName"
+                          value={formData.full_name}
+                          onChange={(e) => handleInputChange('full_name', e.target.value)}
+                          placeholder="e.g. Jordan Smith"
+                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${
+                            formErrors.full_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                          }`}
+                        />
                       ) : (
-                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">
-                          {formatGender(clientData.gender, clientData.custom_gender)}
-                        </p>
+                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.full_name}</p>
                       )}
-                      
-                      {/* Custom Gender Input */}
-                      {editMode && formData.gender === 'other' && (
-                        <div className="mt-3">
-                          <input
-                            type="text"
-                            placeholder="Please specify"
-                            value={formData.custom_gender}
-                            onChange={(e) => handleInputChange('custom_gender', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-therapy-coral focus:border-transparent"
-                          />
-                        </div>
+                      {formErrors.full_name && <p className="mt-1 text-sm text-red-600">{formErrors.full_name}</p>}
+                    </div>
+                    <div>
+                      <label htmlFor="preferredName" className="block text-sm font-medium text-therapy-navy mb-2">Preferred Name</label>
+                      {editMode ? (
+                        <input type="text" id="preferredName" value={formData.preferred_name} onChange={(e) => handleInputChange('preferred_name', e.target.value)} placeholder="e.g. Jo" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors" />
+                      ) : (
+                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.preferred_name || '-'}</p>
                       )}
-                      
-                      {formErrors.gender && (
-                        <p className="mt-2 text-sm text-red-600">{formErrors.gender}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="age" className="block text-sm font-medium text-therapy-navy mb-2">Approximate Age</label>
+                      {editMode ? (
+                        <input type="number" id="age" min="0" max="120" value={formData.approximate_age} onChange={(e) => handleInputChange('approximate_age', e.target.value)} placeholder="25" className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${formErrors.approximate_age ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
+                      ) : (
+                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.approximate_age != null ? `${clientData.approximate_age} years` : '-'}</p>
                       )}
-                    </fieldset>
+                      {formErrors.approximate_age && <p className="mt-1 text-sm text-red-600">{formErrors.approximate_age}</p>}
+                    </div>
+                    <div>
+                      <label htmlFor="pronouns" className="block text-sm font-medium text-therapy-navy mb-2">Pronouns</label>
+                      {editMode ? (
+                        <input type="text" id="pronouns" value={formData.pronouns} onChange={(e) => handleInputChange('pronouns', e.target.value)} placeholder="e.g. she/her, he/him, they/them" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors" />
+                      ) : (
+                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.pronouns || '-'}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="genderIdentity" className="block text-sm font-medium text-therapy-navy mb-2">Gender Identity</label>
+                      {editMode ? (
+                        <input type="text" id="genderIdentity" value={formData.gender_identity} onChange={(e) => handleInputChange('gender_identity', e.target.value)} placeholder="e.g. woman, man, non-binary" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors" />
+                      ) : (
+                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{formatGenderIdentity(clientData.gender_identity, clientData.gender_identity_other) || '-'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-medium text-therapy-navy mb-2">Email</label>
+                      {editMode ? (
+                        <input type="email" id="email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} placeholder="client@example.com" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors" />
+                      ) : (
+                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.email || '-'}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-therapy-navy mb-2">Phone</label>
+                    {editMode ? (
+                      <input type="tel" id="phone" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} placeholder="+1 (555) 000-0000" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors md:w-1/2" />
+                    ) : (
+                      <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.phone || '-'}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="background" className="block text-sm font-medium text-therapy-navy mb-2">Background Summary</label>
+                    {editMode ? (
+                      <textarea id="background" rows={6} value={formData.background_summary} onChange={(e) => handleInputChange('background_summary', e.target.value)} placeholder="Client background, presenting concerns, history..." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors resize-none" />
+                    ) : (
+                      <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy whitespace-pre-wrap">{clientData.background_summary || '-'}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -770,7 +935,7 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                   >
                     Cancel
                   </button>
-                  
+
                   <button
                     onClick={handleSubmit}
                     disabled={isSubmitting || Object.keys(formErrors).length > 0}
@@ -790,6 +955,54 @@ export default function ClientProfile({ params }: ClientProfileProps) {
                   </button>
                 </div>
               )}
+
+              {/* Delete Client */}
+              <div className="mt-12 pt-8 border-t border-red-200">
+                <h3 className="text-lg font-semibold text-red-600 mb-2">Danger Zone</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Permanently delete this client and all associated data. This action cannot be undone.
+                </p>
+                {!showDeleteConfirm ? (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="px-6 py-2.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium"
+                  >
+                    Delete Client
+                  </button>
+                ) : (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700 font-medium mb-3">
+                      Are you sure you want to delete {clientData?.full_name || 'this client'}? This will permanently remove their profile, sessions, and all related records.
+                    </p>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={handleDeleteClient}
+                        disabled={isDeleting}
+                        className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                      >
+                        {isDeleting ? (
+                          <>
+                            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Deleting...</span>
+                          </>
+                        ) : (
+                          <span>Yes, Delete</span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteConfirm(false)}
+                        disabled={isDeleting}
+                        className="px-6 py-2.5 text-gray-600 hover:text-therapy-navy transition-colors font-medium"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

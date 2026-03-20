@@ -267,29 +267,51 @@ Be thorough but concise, appropriate for clinical documentation."""
         """
         system_prompt = """You are an expert clinical psychologist. Based on the client background provided, generate a structured clinical intake assessment.
 
-Return ONLY a valid JSON object with exactly these 8 fields:
+Return ONLY a valid JSON object with exactly these 18 fields:
 {
+  "identification": "...",
   "presenting_problem": "...",
-  "clinical_symptoms": "...",
-  "diagnosis": "...",
-  "case_formulation": "...",
-  "risk_level": "...",
-  "functioning_severity": "...",
-  "personality_patterns": "...",
-  "strengths_resources": "..."
+  "psychiatric_history": "...",
+  "trauma_history": "...",
+  "family_psychiatric_history": "...",
+  "medical_history": "...",
+  "current_medications": "...",
+  "substance_use": "...",
+  "family_history": "...",
+  "social_history": "...",
+  "spiritual_cultural_factors": "...",
+  "developmental_history": "...",
+  "educational_vocational_history": "...",
+  "legal_history": "...",
+  "snap_strengths": "...",
+  "snap_needs": "...",
+  "snap_abilities": "...",
+  "snap_preferences": "..."
 }
 
 Guidelines for each field:
-- presenting_problem: The main reasons the client is seeking therapy
-- clinical_symptoms: Symptom clusters (depressive, panic, trauma-related, OCD, social anxiety, etc.)
-- diagnosis: Suggested diagnosis using DSM-5/ICD-11 framework, or "To be assessed" if insufficient info
-- case_formulation: What the problem is, how it developed, what keeps it going, protective factors, suggested treatment approach
-- risk_level: Assessment of Low/Moderate/High for self-harm, suicide, harm to others — explain briefly
-- functioning_severity: How the issue affects daily life, work, relationships, sleep, concentration, self-care
-- personality_patterns: Recurring interpersonal/personality patterns (perfectionism, dependency, emotional dysregulation, insecure attachment, avoidance, etc.)
-- strengths_resources: Client's resilience, insight, motivation, family support, coping skills, values, goals
+- identification: Brief identifying summary — age, gender, referral source, presenting appearance
+- presenting_problem: History of the present problem — main reasons for seeking therapy, onset, duration, severity, triggers
+- psychiatric_history: Past psychiatric/psychological treatment, hospitalizations, previous diagnoses, medications tried
+- trauma_history: History of trauma — abuse, neglect, accidents, violence, significant losses, PTSD symptoms
+- family_psychiatric_history: Mental health history in family — diagnoses, substance use, suicide, hospitalizations among relatives
+- medical_history: Current and past medical conditions, surgeries, chronic illnesses, relevant health concerns
+- current_medications: All current medications including psychiatric, medical, supplements, dosages if known
+- substance_use: Current and past use of alcohol, drugs, tobacco — frequency, quantity, history of dependence/treatment
+- family_history: Family composition, dynamics, relationships, upbringing, current family support
+- social_history: Social relationships, support network, living situation, daily activities, hobbies, isolation patterns
+- spiritual_cultural_factors: Religious/spiritual beliefs, cultural background, how these influence coping and worldview
+- developmental_history: Early development, childhood milestones, attachment patterns, significant childhood experiences
+- educational_vocational_history: Education level, academic performance, work history, current employment, career concerns
+- legal_history: Any legal involvement — arrests, custody issues, restraining orders, pending cases
+- snap_strengths: Client strengths — resilience, insight, motivation, coping skills, values, accomplishments
+- snap_needs: Client needs — areas requiring support, unmet needs, treatment priorities
+- snap_abilities: Client abilities — functional capacities, skills, competencies, resources available
+- snap_preferences: Client preferences — preferred treatment approach, goals, what they want from therapy
 
-Be professional and evidence-based. If insufficient information for a field, note what needs to be further assessed."""
+IMPORTANT: If the background does not mention information for a particular field, return an empty string "" for that field. Do NOT fabricate or assume information not provided. Only populate fields where the background clearly provides relevant information.
+
+Be professional and evidence-based."""
 
         user_content = ""
         if client_info:
@@ -301,7 +323,7 @@ Be professional and evidence-based. If insufficient information for a field, not
             {"role": "user", "content": user_content}
         ]
 
-        response = await self._make_request(messages, temperature=0.5, max_tokens=2000)
+        response = await self._make_request(messages, temperature=0.5, max_tokens=4000)
         content = response['choices'][0]['message']['content']
 
         import re
@@ -314,14 +336,24 @@ Be professional and evidence-based. If insufficient information for a field, not
 
         # Fallback: put raw content in presenting_problem
         return {
+            "identification": "",
             "presenting_problem": content,
-            "clinical_symptoms": "To be assessed",
-            "diagnosis": "To be assessed",
-            "case_formulation": "To be assessed",
-            "risk_level": "To be assessed",
-            "functioning_severity": "To be assessed",
-            "personality_patterns": "To be assessed",
-            "strengths_resources": "To be assessed"
+            "psychiatric_history": "",
+            "trauma_history": "",
+            "family_psychiatric_history": "",
+            "medical_history": "",
+            "current_medications": "",
+            "substance_use": "",
+            "family_history": "",
+            "social_history": "",
+            "spiritual_cultural_factors": "",
+            "developmental_history": "",
+            "educational_vocational_history": "",
+            "legal_history": "",
+            "snap_strengths": "",
+            "snap_needs": "",
+            "snap_abilities": "",
+            "snap_preferences": "",
         }
 
     async def analyze_client_background(
@@ -501,6 +533,37 @@ Be professional, evidence-based, and clinically insightful. Write in third perso
         response = await self._make_request(messages, temperature=0.6, max_tokens=1000)
         return response['choices'][0]['message']['content']
 
+    def _build_client_profile_block(self, client_info: Dict[str, Any], persona: Optional[str], session_summaries: Optional[List[str]] = None) -> str:
+        """Build a reusable client profile + session history block for system prompts."""
+        name = client_info.get("name", "the client")
+        preferred = client_info.get("preferred_name")
+        age = client_info.get("approximate_age", "unknown age")
+        gender = client_info.get("gender_identity", "")
+        pronouns = client_info.get("pronouns", "")
+        background = client_info.get("background_summary", "")
+
+        lines = [
+            "Client Profile:",
+            f"- Name: {name}" + (f" (goes by {preferred})" if preferred else ""),
+            f"- Age: {age}",
+        ]
+        if gender:
+            lines.append(f"- Gender Identity: {gender}")
+        if pronouns:
+            lines.append(f"- Pronouns: {pronouns}")
+        if background:
+            lines.append(f"- Background: {background}")
+
+        block = "\n".join(lines)
+
+        if persona:
+            block += f"\n\nClinical Persona:\n{persona}"
+
+        if session_summaries:
+            block += "\n\nSession History (most recent first):\n" + "\n\n".join(session_summaries)
+
+        return block
+
     async def chat_with_client_mode(
         self,
         mode: str,
@@ -513,48 +576,32 @@ Be professional, evidence-based, and clinically insightful. Write in third perso
         Chat with LLM in a client-focused mode.
         Modes: investigate, role_play, supervisor
         """
+        profile = self._build_client_profile_block(client_info, persona, session_summaries)
         name = client_info.get("name", "the client")
-        age = client_info.get("age", "unknown age")
-        gender = client_info.get("gender", "")
-        background = client_info.get("background", "")
-
-        persona_section = f"\n\nClinical Persona:\n{persona}" if persona else ""
 
         if mode == "investigate":
             system_prompt = f"""You are an expert clinical psychologist helping a therapist investigate their client.
 
-Client Profile:
-- Name: {name}
-- Age: {age}
-- Gender: {gender}
-- Background: {background}{persona_section}
+{profile}
 
 Provide thoughtful clinical insights, explore patterns, and help the therapist understand this client more deeply. Be analytical and evidence-based."""
 
         elif mode == "role_play":
-            system_prompt = f"""You are {name}, a {age}-year-old {gender} client in therapy.
+            system_prompt = f"""You are {name}, a client in therapy. Stay in character at all times.
 
-Your background: {background}{persona_section}
+{profile}
 
-Respond naturally as this client would in a therapy session. Show realistic emotions, defenses, and communication patterns consistent with the client's background. Do not break character."""
+Respond naturally as this client would in a therapy session. Show realistic emotions, defenses, and communication patterns consistent with the client's background and session history. Do not break character."""
 
         elif mode == "supervisor":
-            summaries_text = ""
-            if session_summaries:
-                summaries_text = "\n\nRecent Session Notes:\n" + "\n\n".join(session_summaries)
-
             system_prompt = f"""You are an experienced clinical supervisor helping a therapist reflect on their work with a client.
 
-Client Profile:
-- Name: {name}
-- Age: {age}
-- Gender: {gender}
-- Background: {background}{persona_section}{summaries_text}
+{profile}
 
 Provide clinical supervision: help the therapist process challenges, consider alternative formulations, explore countertransference, and develop their clinical thinking."""
 
         else:
-            system_prompt = f"You are a helpful clinical AI assistant. Client: {name}."
+            system_prompt = f"You are a helpful clinical AI assistant.\n\n{profile}"
 
         full_messages = [{"role": "system", "content": system_prompt}]
         full_messages.extend(messages)
@@ -571,43 +618,29 @@ Provide clinical supervision: help the therapist process challenges, consider al
         session_summaries: Optional[List[str]] = None
     ) -> AsyncIterator[str]:
         """Streaming version of chat_with_client_mode. Yields SSE chunks."""
+        profile = self._build_client_profile_block(client_info, persona, session_summaries)
         name = client_info.get("name", "the client")
-        age = client_info.get("age", "unknown age")
-        gender = client_info.get("gender", "")
-        background = client_info.get("background", "")
-        persona_section = f"\n\nClinical Persona:\n{persona}" if persona else ""
 
         if mode == "investigate":
             system_prompt = f"""You are an expert clinical psychologist helping a therapist investigate their client.
 
-Client Profile:
-- Name: {name}
-- Age: {age}
-- Gender: {gender}
-- Background: {background}{persona_section}
+{profile}
 
 Provide thoughtful clinical insights, explore patterns, and help the therapist understand this client more deeply. Be analytical and evidence-based."""
         elif mode == "role_play":
-            system_prompt = f"""You are {name}, a {age}-year-old {gender} client in therapy.
+            system_prompt = f"""You are {name}, a client in therapy. Stay in character at all times.
 
-Your background: {background}{persona_section}
+{profile}
 
-Respond naturally as this client would in a therapy session. Show realistic emotions, defenses, and communication patterns consistent with the client's background. Do not break character."""
+Respond naturally as this client would in a therapy session. Show realistic emotions, defenses, and communication patterns consistent with the client's background and session history. Do not break character."""
         elif mode == "supervisor":
-            summaries_text = ""
-            if session_summaries:
-                summaries_text = "\n\nRecent Session Notes:\n" + "\n\n".join(session_summaries)
             system_prompt = f"""You are an experienced clinical supervisor helping a therapist reflect on their work with a client.
 
-Client Profile:
-- Name: {name}
-- Age: {age}
-- Gender: {gender}
-- Background: {background}{persona_section}{summaries_text}
+{profile}
 
 Provide clinical supervision: help the therapist process challenges, consider alternative formulations, explore countertransference, and develop their clinical thinking."""
         else:
-            system_prompt = f"You are a helpful clinical AI assistant. Client: {name}."
+            system_prompt = f"You are a helpful clinical AI assistant.\n\n{profile}"
 
         full_messages = [{"role": "system", "content": system_prompt}]
         full_messages.extend(messages)
@@ -615,39 +648,50 @@ Provide clinical supervision: help the therapist process challenges, consider al
         async for chunk in self._make_streaming_request(full_messages, temperature=0.7, max_tokens=1500):
             yield chunk
 
-    async def stream_chat_psychological_school(
+    _SCHOOL_DESCRIPTIONS = {
+        "CBT": "Cognitive Behavioral Therapy — focuses on the relationship between thoughts, feelings, and behaviors",
+        "Psychoanalytic": "Psychoanalytic therapy — explores unconscious processes, early experiences, and defense mechanisms",
+        "Humanistic": "Humanistic therapy — emphasizes personal growth, self-actualization, and unconditional positive regard",
+        "Existential": "Existential therapy — addresses meaning, freedom, responsibility, and existential anxiety",
+        "Gestalt": "Gestalt therapy — focuses on present-moment awareness, contact, and unfinished business",
+        "ACT": "Acceptance and Commitment Therapy — uses acceptance, mindfulness, and values-based action",
+        "DBT": "Dialectical Behavior Therapy — combines CBT with mindfulness and dialectical thinking",
+        "Narrative": "Narrative therapy — helps clients re-author their life stories and separate from problems",
+        "SFBT": "Solution-Focused Brief Therapy — focuses on strengths, solutions, and a preferred future",
+        "Adlerian": "Adlerian therapy — explores social interest, birth order, lifestyle, and inferiority feelings",
+        "Behavioral": "Behavioral therapy — uses learning principles to change maladaptive behaviors",
+        "IPT": "Interpersonal Therapy — focuses on improving interpersonal relationships and communication",
+    }
+
+    def _build_school_system_prompt(
         self,
         school: str,
-        messages: List[Dict[str, str]],
-        client_context: Optional[str] = None,
+        client_info: Optional[Dict[str, Any]] = None,
         session_summaries: Optional[List[str]] = None
-    ) -> AsyncIterator[str]:
-        """Streaming version of chat_psychological_school. Yields SSE chunks."""
-        school_descriptions = {
-            "CBT": "Cognitive Behavioral Therapy — focuses on the relationship between thoughts, feelings, and behaviors",
-            "Psychoanalytic": "Psychoanalytic therapy — explores unconscious processes, early experiences, and defense mechanisms",
-            "Humanistic": "Humanistic therapy — emphasizes personal growth, self-actualization, and unconditional positive regard",
-            "Existential": "Existential therapy — addresses meaning, freedom, responsibility, and existential anxiety",
-            "Gestalt": "Gestalt therapy — focuses on present-moment awareness, contact, and unfinished business",
-            "ACT": "Acceptance and Commitment Therapy — uses acceptance, mindfulness, and values-based action",
-            "DBT": "Dialectical Behavior Therapy — combines CBT with mindfulness and dialectical thinking",
-            "Narrative": "Narrative therapy — helps clients re-author their life stories and separate from problems",
-            "SFBT": "Solution-Focused Brief Therapy — focuses on strengths, solutions, and a preferred future",
-            "Adlerian": "Adlerian therapy — explores social interest, birth order, lifestyle, and inferiority feelings",
-            "Behavioral": "Behavioral therapy — uses learning principles to change maladaptive behaviors",
-            "IPT": "Interpersonal Therapy — focuses on improving interpersonal relationships and communication",
-        }
-        description = school_descriptions.get(school, school)
-        system_prompt = f"""You are an expert in {school} therapy. {description}
+    ) -> str:
+        description = self._SCHOOL_DESCRIPTIONS.get(school, school)
+        prompt = f"""You are an expert in {school} therapy. {description}
 
 Draw from the core theories, techniques, and language of {school} to respond to clinical questions.
 Suggest specific interventions, exercises, or frameworks from this approach where relevant."""
 
-        if client_context:
-            system_prompt += f"\n\nClient Context:\n{client_context}"
+        if client_info:
+            profile = self._build_client_profile_block(client_info, None, session_summaries)
+            prompt += f"\n\n{profile}"
+        elif session_summaries:
+            prompt += "\n\nSession History:\n" + "\n\n".join(session_summaries)
 
-        if session_summaries:
-            system_prompt += "\n\nRelevant Session Notes:\n" + "\n---\n".join(session_summaries)
+        return prompt
+
+    async def stream_chat_psychological_school(
+        self,
+        school: str,
+        messages: List[Dict[str, str]],
+        client_info: Optional[Dict[str, Any]] = None,
+        session_summaries: Optional[List[str]] = None
+    ) -> AsyncIterator[str]:
+        """Streaming version of chat_psychological_school. Yields SSE chunks."""
+        system_prompt = self._build_school_system_prompt(school, client_info, session_summaries)
 
         full_messages = [{"role": "system", "content": system_prompt}]
         full_messages.extend(messages)
@@ -659,39 +703,11 @@ Suggest specific interventions, exercises, or frameworks from this approach wher
         self,
         school: str,
         messages: List[Dict[str, str]],
-        client_context: Optional[str] = None,
+        client_info: Optional[Dict[str, Any]] = None,
         session_summaries: Optional[List[str]] = None
     ) -> str:
-        """
-        Chat from the perspective of a psychological therapeutic school.
-        """
-        school_descriptions = {
-            "CBT": "Cognitive Behavioral Therapy — focuses on the relationship between thoughts, feelings, and behaviors",
-            "Psychoanalytic": "Psychoanalytic therapy — explores unconscious processes, early experiences, and defense mechanisms",
-            "Humanistic": "Humanistic therapy — emphasizes personal growth, self-actualization, and unconditional positive regard",
-            "Existential": "Existential therapy — addresses meaning, freedom, responsibility, and existential anxiety",
-            "Gestalt": "Gestalt therapy — focuses on present-moment awareness, contact, and unfinished business",
-            "ACT": "Acceptance and Commitment Therapy — uses acceptance, mindfulness, and values-based action",
-            "DBT": "Dialectical Behavior Therapy — combines CBT with mindfulness and dialectical thinking",
-            "Narrative": "Narrative therapy — helps clients re-author their life stories and separate from problems",
-            "SFBT": "Solution-Focused Brief Therapy — focuses on strengths, solutions, and a preferred future",
-            "Adlerian": "Adlerian therapy — explores social interest, birth order, lifestyle, and inferiority feelings",
-            "Behavioral": "Behavioral therapy — uses learning principles to change maladaptive behaviors",
-            "IPT": "Interpersonal Therapy — focuses on improving interpersonal relationships and communication",
-        }
-
-        description = school_descriptions.get(school, school)
-
-        system_prompt = f"""You are an expert in {school} therapy. {description}
-
-Draw from the core theories, techniques, and language of {school} to respond to clinical questions.
-Suggest specific interventions, exercises, or frameworks from this approach where relevant."""
-
-        if client_context:
-            system_prompt += f"\n\nClient Context:\n{client_context}"
-
-        if session_summaries:
-            system_prompt += "\n\nRelevant Session Notes:\n" + "\n---\n".join(session_summaries)
+        """Chat from the perspective of a psychological therapeutic school."""
+        system_prompt = self._build_school_system_prompt(school, client_info, session_summaries)
 
         full_messages = [{"role": "system", "content": system_prompt}]
         full_messages.extend(messages)
