@@ -215,7 +215,7 @@ class AppwriteDB:
         response = self._make_request(
             method="PATCH",
             url=url,
-            json=column_data
+            json={"data": column_data}
         )
 
         result = self._handle_response(response, "update")

@@ -121,6 +121,8 @@ export interface Session {
   session_date: string
   duration_minutes: number
   session_type: string
+  modality?: string
+  status?: string
   notes?: string
   transcript?: string
   summary?: string
@@ -132,6 +134,29 @@ export interface Session {
   private_notes?: string
   tags?: string[]
   created_at: string
+  updated_at?: string
+}
+
+export interface SessionNote {
+  id: string
+  session_id: string
+  client_id: string
+  therapist_id?: string
+  note_format: string
+  free_content?: string
+  birp_behavior?: string
+  birp_intervention?: string
+  birp_response?: string
+  birp_plan?: string
+  dap_data?: string
+  dap_assessment?: string
+  dap_plan?: string
+  soap_subjective?: string
+  soap_objective?: string
+  soap_assessment?: string
+  soap_plan?: string
+  is_finalized?: boolean
+  created_at?: string
   updated_at?: string
 }
 
@@ -565,6 +590,29 @@ class ApiClient {
     return this.request<Attendance>('/api/v1/attendance/', {
       method: 'POST',
       body: JSON.stringify({ session_id: sessionId, attended, note }),
+    })
+  }
+
+  // Session Notes
+  async getSessionNote(sessionId: string): Promise<SessionNote | null> {
+    try {
+      return await this.request<SessionNote>(`/api/v1/session-notes/session/${sessionId}`)
+    } catch {
+      return null
+    }
+  }
+
+  async createSessionNote(data: Omit<SessionNote, 'id' | 'therapist_id' | 'created_at' | 'updated_at'>): Promise<SessionNote> {
+    return this.request<SessionNote>('/api/v1/session-notes/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateSessionNote(id: string, data: Partial<Omit<SessionNote, 'id' | 'session_id' | 'client_id' | 'therapist_id' | 'created_at' | 'updated_at'>>): Promise<SessionNote> {
+    return this.request<SessionNote>(`/api/v1/session-notes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     })
   }
 }

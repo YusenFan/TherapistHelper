@@ -1,0 +1,23 @@
+[mcp_servers.appwrite-api]
+args = [
+    "mcp-server-appwrite",
+    "--users",
+]
+command = "uvx"
+
+[mcp_servers.appwrite-api.env]
+APPWRITE_API_KEY = "standard_5ef2f32747b64b3a5d6762ec1ee44dc1e509c198f82a84989e7a7ab52dad094d4e60ad4a4e5c256df157544a66d1f23e5b3e10302222b343d432451e54c6e52b3600f7b8be6682535da8c92021ac2594d096acc05a18b0a2e854f0c621bbcc9a01388a91eb70f01485614e948f49a74fbab2c396a176670e03a857e1f173045d"
+APPWRITE_ENDPOINT = "https://sgp.cloud.appwrite.io/v1"
+APPWRITE_PROJECT_ID = "69adbd67003e41b04c1f"
+
+[mcp_servers.appwrite-docs]
+url = "https://mcp-for-docs.appwrite.io"
+
+[mcp_servers.render]
+url = "https://mcp.render.com/mcp"
+
+[mcp_servers.render.http_headers]
+Authorization = "Bearer <YOUR_API_KEY>"
+
+[mcp_servers.vercel]
+url = "https://mcp.vercel.com"

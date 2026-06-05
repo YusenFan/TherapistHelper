@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { apiClient, type ClientListItem, type Session } from '@/lib/api'
+import { apiClient, type ClientListItem, type Session, type SessionNote } from '@/lib/api'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -291,9 +291,31 @@ function NewSessionForm() {
         session_date: sessionDatetime.toISOString(),
         duration_minutes: durationMinutes,
         session_type: sessionType,
-        notes: buildNotesSummary(finalAnalysis),
-        analysis: finalAnalysis as unknown as Record<string, unknown>,
+        status: status === 'finalized' ? 'completed' : 'draft',
       })
+
+      // Save note content to session_notes collection
+      const noteFormatLower = noteFormat.toLowerCase() as 'free' | 'birp' | 'dap' | 'soap'
+      const noteData: Omit<SessionNote, 'id' | 'therapist_id' | 'created_at' | 'updated_at'> = {
+        session_id: session.id,
+        client_id: selectedClientId,
+        note_format: noteFormatLower,
+        is_finalized: status === 'finalized',
+        free_content: noteFormat === 'Free' ? finalAnalysis.free_text : undefined,
+        birp_behavior: noteFormat === 'BIRP' ? finalAnalysis.behavior : undefined,
+        birp_intervention: noteFormat === 'BIRP' ? finalAnalysis.intervention : undefined,
+        birp_response: noteFormat === 'BIRP' ? finalAnalysis.response : undefined,
+        birp_plan: noteFormat === 'BIRP' ? finalAnalysis.plan : undefined,
+        dap_data: noteFormat === 'DAP' ? finalAnalysis.data : undefined,
+        dap_assessment: noteFormat === 'DAP' ? finalAnalysis.assessment : undefined,
+        dap_plan: noteFormat === 'DAP' ? finalAnalysis.plan : undefined,
+        soap_subjective: noteFormat === 'SOAP' ? finalAnalysis.subjective : undefined,
+        soap_objective: noteFormat === 'SOAP' ? finalAnalysis.objective : undefined,
+        soap_assessment: noteFormat === 'SOAP' ? finalAnalysis.assessment : undefined,
+        soap_plan: noteFormat === 'SOAP' ? finalAnalysis.plan : undefined,
+      }
+      await apiClient.createSessionNote(noteData)
+
       router.push(`/sessions?client_id=${selectedClientId}&session_id=${session.id}&saved=true`)
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save session.')
