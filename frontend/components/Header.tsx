@@ -6,7 +6,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <Link href="/">
+            <Link href="/dashboard">
               <h1 className="text-xl font-semibold text-therapy-navy cursor-pointer">
                 TheraBee
               </h1>
@@ -15,7 +15,7 @@ export default function Header() {
           
           <nav className="flex space-x-8">
             <Link 
-              href="/" 
+              href="/dashboard" 
               className="text-therapy-navy hover:text-therapy-coral transition-colors font-medium"
             >
               Dashboard

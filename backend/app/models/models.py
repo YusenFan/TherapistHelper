@@ -3,7 +3,7 @@ Pydantic Models for TherapistHelper
 Used with Appwrite database
 
 Encryption note: Sensitive fields are stored with '_encrypted' suffix in Appwrite
-and have Appwrite-native encryption enabled. The API sends/receives plaintext —
+and have Appwrite-native encryption enabled. The API sends/receives plaintext -
 Appwrite handles encryption at rest transparently.
 """
 from pydantic import BaseModel, Field, field_validator
@@ -11,6 +11,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
 import json
+import re
 
 
 # ============================================================================
@@ -577,3 +578,25 @@ class ChatResponse(BaseModel):
     reply: str
     mode: Optional[str] = None
     school: Optional[str] = None
+
+
+# ============================================================================
+# Waitlist Models
+# ============================================================================
+
+class WaitlistCreate(BaseModel):
+    email: str = Field(..., min_length=5, max_length=320)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", normalized):
+            raise ValueError("A valid email address is required")
+        return normalized
+
+
+class WaitlistResponse(BaseModel):
+    success: bool = True
+    message: str
+    already_joined: bool = False

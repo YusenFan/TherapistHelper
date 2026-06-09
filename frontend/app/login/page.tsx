@@ -17,7 +17,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/')
+      router.replace('/dashboard')
     }
   }, [user, loading, router])
 
@@ -43,7 +43,7 @@ export default function LoginPage() {
       } else {
         await register(email, password, name)
       }
-      router.replace('/')
+      router.replace('/dashboard')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
       setError(msg)
@@ -149,7 +149,7 @@ export default function LoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent outline-none"
-              placeholder="••••••••"
+              placeholder="********"
             />
           </div>
 
@@ -162,7 +162,7 @@ export default function LoginPage() {
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent outline-none"
-                placeholder="••••••••"
+                placeholder="********"
               />
             </div>
           )}

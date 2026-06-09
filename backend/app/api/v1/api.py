@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     clinical_assessments,
     transcription,
     ai,
+    waitlist,
 )
 
 api_router = APIRouter()
@@ -53,4 +54,11 @@ api_router.include_router(
     ai.router,
     prefix="/ai",
     tags=["ai"]
+)
+
+# Public waitlist endpoint
+api_router.include_router(
+    waitlist.router,
+    prefix="/waitlist",
+    tags=["waitlist"]
 )

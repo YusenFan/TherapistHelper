@@ -83,7 +83,7 @@ export interface IntakeAnalysis {
 }
 
 export interface ClientPresentation {
-  mood_rating?: number | null   // 1–10
+  mood_rating?: number | null   // 1-10
   affect?: string               // e.g. "appropriate", "flat", "labile"
   tags?: string[]               // presenting themes / issues
   notes?: string
@@ -225,6 +225,16 @@ export interface Attendance {
   created_at: string
 }
 
+export interface WaitlistRequest {
+  email: string
+}
+
+export interface WaitlistResponse {
+  success: boolean
+  message: string
+  already_joined?: boolean
+}
+
 class ApiClient {
   private baseUrl: string
 
@@ -276,7 +286,15 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.text()
-      throw new Error(error || `HTTP ${response.status}: ${response.statusText}`)
+      if (error) {
+        try {
+          const parsed = JSON.parse(error) as { detail?: string; message?: string }
+          throw new Error(parsed.detail || parsed.message || error)
+        } catch {
+          throw new Error(error)
+        }
+      }
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
 
     return response.json()
@@ -612,6 +630,13 @@ class ApiClient {
   async updateSessionNote(id: string, data: Partial<Omit<SessionNote, 'id' | 'session_id' | 'client_id' | 'therapist_id' | 'created_at' | 'updated_at'>>): Promise<SessionNote> {
     return this.request<SessionNote>(`/api/v1/session-notes/${id}`, {
       method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async joinWaitlist(data: WaitlistRequest): Promise<WaitlistResponse> {
+    return this.request<WaitlistResponse>('/api/v1/waitlist/', {
+      method: 'POST',
       body: JSON.stringify(data),
     })
   }

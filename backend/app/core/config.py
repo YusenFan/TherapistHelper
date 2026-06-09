@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     COLLECTION_SESSIONS: str = "sessions"
     COLLECTION_SESSION_NOTES: str = "session_notes"
     COLLECTION_CLINICAL_ASSESSMENTS: str = "clinical_assessments"
+    COLLECTION_WAITLIST: str = "waitlist"
 
     # Tinfoil.sh API Configuration (for LLM)
     TINFOIL_API_KEY: str = os.getenv("TINFOIL_API_KEY", "tk_Y8afZljtIO7bsSE4joTfmRlbuwNLAMZjRnWNawl3MLcjP1B0")

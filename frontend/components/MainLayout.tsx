@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
 import { useAuth } from '@/lib/auth-context'
 
@@ -13,22 +13,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { user, loading } = useAuth()
   const router = useRouter()
-  const pathname = usePathname()
-
-  const isLoginPage = pathname === '/login'
 
   useEffect(() => {
-    if (!loading && !user && !isLoginPage) {
+    if (!loading && !user) {
       router.replace('/login')
     }
-  }, [user, loading, isLoginPage, router])
+  }, [user, loading, router])
 
-  // Login page renders without sidebar
-  if (isLoginPage) {
-    return <>{children}</>
-  }
-
-  // Show spinner while checking auth
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-therapy-gray">
