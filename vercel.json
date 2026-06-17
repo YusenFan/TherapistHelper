@@ -3,7 +3,7 @@
   "outputDirectory": "frontend/.next",
   "installCommand": "cd frontend && npm install",
   "framework": "nextjs",
-  "regions": ["sgp1"],
+  "regions": ["sin1"],
   "env": {
     "NEXT_PUBLIC_API_URL": "http://localhost:8000"
   }
