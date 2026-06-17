@@ -141,6 +141,24 @@ async function getActiveTab() {
   return tab;
 }
 
+// Talk to the content script. If it isn't loaded (common after the extension
+// is reloaded but the EHR tab wasn't), inject it on demand and retry. This
+// makes sync robust against the "Receiving end does not exist" failure.
+async function sendToContent(tabId, message) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (e) {
+    const msg = String(e?.message || e);
+    if (!/Receiving end does not exist|Could not establish connection/i.test(msg)) throw e;
+    try {
+      await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+    } catch (injectErr) {
+      throw new Error(`Could not inject sync script into tab: ${injectErr.message}`);
+    }
+    return chrome.tabs.sendMessage(tabId, message);
+  }
+}
+
 function ehrFromTab(url) {
   if (!url) return null;
   for (const [key, re] of Object.entries(EHR_HOST_RE)) {
@@ -182,7 +200,7 @@ async function checkPage() {
   }
 
   try {
-    const result = await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_PAGE' });
+    const result = await sendToContent(tab.id, { type: 'CHECK_PAGE' });
     pageSupported = Boolean(result?.supported);
     statusEl.textContent = pageSupported
       ? `Note page detected (${result.fieldsFound} fields)`
@@ -199,6 +217,87 @@ async function checkPage() {
 
 function hasContent(sections) {
   return sections && Object.values(sections).some(v => v && String(v).trim());
+}
+
+// ---------------- Auto-detect (one-click flow) ----------------
+function normalizeName(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function sameDay(a, b) {
+  if (!a || !b) return false;
+  const ms = (v) => new Date(v).getTime();
+  const x = ms(a), y = ms(b);
+  if (Number.isNaN(x) || Number.isNaN(y)) return false;
+  return Math.floor(x / 86400000) === Math.floor(y / 86400000);
+}
+
+function matchClientByName(name) {
+  const target = normalizeName(name);
+  if (!target) return [];
+  return clients.filter(c => {
+    const n = normalizeName(c.name);
+    if (!n) return false;
+    return n === target || n.includes(target) || target.includes(n);
+  });
+}
+
+function showAutoDetectBanner(message) {
+  const banner = $('auto-detect-banner');
+  const text = $('auto-detect-text');
+  if (!banner || !text) return;
+  if (!message) { banner.classList.add('hidden'); return; }
+  text.textContent = message;
+  banner.classList.remove('hidden');
+}
+
+async function detectContextFromTab() {
+  const tab = await getActiveTab();
+  if (ehrFromTab(tab?.url) !== 'therapynotes') return null;
+  try {
+    return await sendToContent(tab.id, { type: 'DETECT_CONTEXT' });
+  } catch {
+    return null;
+  }
+}
+
+async function tryAutoSelect() {
+  showAutoDetectBanner(null);
+  const ctx = await detectContextFromTab();
+  if (!ctx?.patientName) return;
+
+  const matches = matchClientByName(ctx.patientName);
+  if (matches.length === 0) {
+    showAutoDetectBanner(`Detected "${ctx.patientName}" on the EHR page — no matching Therabee client.`);
+    return;
+  }
+  if (matches.length > 1) {
+    showAutoDetectBanner(`Detected "${ctx.patientName}" — multiple matches, pick one below.`);
+    return;
+  }
+
+  const client = matches[0];
+  $('select-client').value = client.id;
+  try {
+    await loadSessions(client.id);
+  } catch (e) {
+    showAutoDetectBanner(`Detected ${client.name}, but failed to load sessions: ${e.message}`);
+    return;
+  }
+
+  const sessMatch = sessions.find(s => sameDay(s.session_date, ctx.sessionDate));
+  if (sessMatch) {
+    selectedSessionId = sessMatch.id;
+    $('select-session').value = sessMatch.id;
+    showDetail(sessMatch);
+    return;
+  }
+
+  showAutoDetectBanner(
+    ctx.sessionDate
+      ? `Detected ${client.name} · ${ctx.sessionDate} — no session matches that date, pick one below.`
+      : `Detected ${client.name} — pick the session note to insert.`
+  );
 }
 
 // ---------------- Data loading ----------------
@@ -274,12 +373,25 @@ function showDetail(session) {
 
   const container = $('preview-sections');
   if (hasContent(currentSections)) {
-    container.innerHTML = Object.entries(currentSections).map(([name, text]) => `
-      <div class="preview-section">
-        <b>${escapeHtml(name)}</b>
+    container.innerHTML = Object.entries(currentSections).map(([name, text]) => {
+      const hasText = !!(text && String(text).trim());
+      const pickBtn = hasText
+        ? `<button class="pick-btn" data-section="${escapeHtml(name)}">↪ Pick field</button>`
+        : '';
+      return `
+      <div class="preview-section" data-section="${escapeHtml(name)}">
+        <div class="preview-section-head">
+          <b>${escapeHtml(name)}</b>
+          ${pickBtn}
+        </div>
         <p>${escapeHtml(text || '(empty)')}</p>
+        <span class="pick-status muted small hidden"></span>
       </div>
-    `).join('');
+      `;
+    }).join('');
+    container.querySelectorAll('.pick-btn').forEach(btn => {
+      btn.addEventListener('click', () => startPickField(btn.dataset.section));
+    });
   } else {
     container.innerHTML = '<p class="muted small">This session has no saved note content yet.</p>';
   }
@@ -288,6 +400,48 @@ function showDetail(session) {
   showView('view-detail');
   checkPage();
 }
+
+// ---------------- Pick-to-target ----------------
+function setPickStatus(section, text, cls = '') {
+  const node = document.querySelector(
+    `.preview-section[data-section="${CSS.escape(section)}"] .pick-status`
+  );
+  if (!node) return;
+  if (!text) { node.classList.add('hidden'); node.textContent = ''; return; }
+  node.classList.remove('hidden');
+  node.className = `pick-status small ${cls}`;
+  node.textContent = text;
+}
+
+async function startPickField(section) {
+  const content = currentSections?.[section];
+  if (!content || !String(content).trim()) return;
+  setError('detail-error', null);
+  try {
+    const tab = await getActiveTab();
+    if (ehrFromTab(tab?.url) !== 'therapynotes') {
+      throw new Error('Open a TherapyNotes note page first.');
+    }
+    setPickStatus(section, 'Click a field on the EHR page…');
+    await sendToContent(tab.id, { type: 'PICK_START', section, content });
+  } catch (e) {
+    setPickStatus(section, e.message, 'status-bad');
+  }
+}
+
+// The content script reports back via runtime.sendMessage when the user
+// clicks a field (or hits Escape) during pick mode.
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type !== 'PICK_DONE') return;
+  const labels = {
+    success: ['Inserted', 'status-success'],
+    cancelled: ['Cancelled', 'status-skip'],
+    validation_failed: ['Failed to write', 'status-bad'],
+    error: ['Error', 'status-bad'],
+  };
+  const [text, cls] = labels[msg.status] || [msg.status, 'status-bad'];
+  setPickStatus(msg.section, text, cls);
+});
 
 // ---------------- Sync ----------------
 async function transfer() {
@@ -306,7 +460,7 @@ async function transfer() {
     if (tabEhr !== 'therapynotes') {
       throw new Error('Open a TherapyNotes note page first, then try again.');
     }
-    resultData = await chrome.tabs.sendMessage(tab.id, { type: 'TRANSFER', sections: currentSections });
+    resultData = await sendToContent(tab.id, { type: 'TRANSFER', sections: currentSections });
     overall = resultData?.overall || 'failed';
   } catch (e) {
     overall = 'failed';
@@ -382,10 +536,16 @@ async function enterList() {
   $('user-email').textContent = userEmail || 'Signed in';
   viewStack = [];
   showView('view-list');
-  await loadClients().catch(e => setError('list-error', e.message));
-  // checkPage is only meaningful in the detail view, but run it once so
-  // any future status indicator works.
-  checkPage();
+  showAutoDetectBanner(null);
+  try {
+    await loadClients();
+  } catch (e) {
+    setError('list-error', e.message);
+    return;
+  }
+  // Try to auto-select the client/session based on what's open in the EHR.
+  // If a unique session matches, this jumps straight to the detail view.
+  await tryAutoSelect().catch(() => {});
 }
 
 // --- Back button ---
@@ -461,6 +621,7 @@ $('select-client').addEventListener('change', async (e) => {
   const clientId = e.target.value || null;
   selectedSessionId = null;
   setError('list-error', null);
+  showAutoDetectBanner(null);
   if (clientId) {
     try { await loadSessions(clientId); }
     catch (err) { setError('list-error', err.message); }
@@ -490,11 +651,16 @@ $('btn-done').addEventListener('click', () => {
 });
 
 // --- Tab changes: re-check page status when on detail view ---
+// On the list view, re-run auto-detect so navigating to a new EHR patient
+// automatically pre-selects the matching Therabee client/session.
 chrome.tabs.onActivated.addListener(() => {
   if (!$('view-detail').classList.contains('hidden')) checkPage();
+  else if (!$('view-list').classList.contains('hidden')) tryAutoSelect().catch(() => {});
 });
 chrome.tabs.onUpdated.addListener((_, info) => {
-  if (info.status === 'complete' && !$('view-detail').classList.contains('hidden')) checkPage();
+  if (info.status !== 'complete') return;
+  if (!$('view-detail').classList.contains('hidden')) checkPage();
+  else if (!$('view-list').classList.contains('hidden')) tryAutoSelect().catch(() => {});
 });
 
 init();

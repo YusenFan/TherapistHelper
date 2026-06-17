@@ -3,7 +3,7 @@
   "name": "Therabee EHR Sync",
   "version": "0.3.0",
   "description": "Sync saved session notes (any format) from Therabee into your EHR note page.",
-  "permissions": ["storage", "activeTab", "tabs", "sidePanel"],
+  "permissions": ["storage", "activeTab", "tabs", "sidePanel", "scripting"],
   "host_permissions": [
     "https://*.therapynotes.com/*",
     "https://*.simplepractice.com/*",
