@@ -1,229 +1,85 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-export interface ClientListItem {
+// ============================================================================
+// Types (new minimal schema)
+// ============================================================================
+
+export interface Client {
   id: string
-  full_name: string
-  preferred_name?: string
-  approximate_age?: number
-  gender_identity?: string
+  therapist_id?: string
+  name: string
   pronouns?: string
-  status?: string
-  created_at: string
-}
-
-export interface ClientDetail extends ClientListItem {
   date_of_birth?: string
-  administrative_sex?: string
-  gender_identity_other?: string
-  sexual_orientation?: string
-  sexual_orientation_other?: string
-  race_values?: string[]
-  race_other?: string
-  ethnicity_values?: string[]
-  ethnicity_other?: string
-  language_codes?: string[]
-  smoking_status?: string
-  marital_status?: string
-  employment_status?: string
-  occupation_title?: string
-  religious_spiritual_affiliation?: string
-  email?: string
-  phone?: string
-  background_summary?: string
+  client_type?: string
+  primary_diagnosis?: string
+  other_diagnoses?: string[]
+  high_risk?: boolean
+  extra_info?: string
+  created_at?: string
   updated_at?: string
-  archived_at?: string
 }
 
-export interface ClientData {
-  full_name: string
-  preferred_name?: string
-  date_of_birth?: string
-  approximate_age?: number
-  administrative_sex?: string
-  gender_identity?: string
-  gender_identity_other?: string
+export type ClientInput = {
+  name: string
   pronouns?: string
-  sexual_orientation?: string
-  sexual_orientation_other?: string
-  race_values?: string[]
-  race_other?: string
-  ethnicity_values?: string[]
-  ethnicity_other?: string
-  language_codes?: string[]
-  smoking_status?: string
-  marital_status?: string
-  employment_status?: string
-  occupation_title?: string
-  religious_spiritual_affiliation?: string
-  email?: string
-  phone?: string
-  background_summary?: string
-  status?: string
-}
-
-export interface IntakeAnalysis {
-  identification: string
-  presenting_problem: string
-  psychiatric_history: string
-  trauma_history: string
-  family_psychiatric_history: string
-  medical_history: string
-  current_medications: string
-  substance_use: string
-  family_history: string
-  social_history: string
-  spiritual_cultural_factors: string
-  developmental_history: string
-  educational_vocational_history: string
-  legal_history: string
-  snap_strengths: string
-  snap_needs: string
-  snap_abilities: string
-  snap_preferences: string
-}
-
-export interface ClientPresentation {
-  mood_rating?: number | null   // 1–10
-  affect?: string               // e.g. "appropriate", "flat", "labile"
-  tags?: string[]               // presenting themes / issues
-  notes?: string
-}
-
-export interface RiskAssessment {
-  risk_level?: string           // "none" | "low" | "moderate" | "high" | "imminent"
-  suicidal_ideation?: string    // "none" | "passive" | "active_without_plan" | "active_with_plan"
-  self_harm?: boolean
-  homicidal_ideation?: boolean
-  protective_factors?: string[]
-  notes?: string
-}
-
-export interface HomeworkItem {
-  task: string
-  completed: boolean
-}
-
-export interface Homework {
-  items?: HomeworkItem[]
-  notes?: string
-}
-
-export interface Planning {
-  goals?: string[]
-  interventions?: string[]
-  next_session_focus?: string
-  notes?: string
+  date_of_birth?: string
+  client_type?: string
+  primary_diagnosis?: string
+  other_diagnoses?: string[]
+  high_risk?: boolean
+  extra_info?: string
 }
 
 export interface Session {
   id: string
+  therapist_id?: string
   client_id: string
   session_date: string
-  duration_minutes: number
-  session_type: string
-  modality?: string
-  status?: string
-  notes?: string
-  transcript?: string
   summary?: string
-  analysis?: Record<string, unknown>
-  client_presentation?: ClientPresentation
-  risk_assessment?: RiskAssessment
-  homework?: Homework
-  planning?: Planning
-  private_notes?: string
-  tags?: string[]
-  created_at: string
-  updated_at?: string
-}
-
-export interface SessionNote {
-  id: string
-  session_id: string
-  client_id: string
-  therapist_id?: string
-  note_format: string
-  free_content?: string
-  birp_behavior?: string
-  birp_intervention?: string
-  birp_response?: string
-  birp_plan?: string
-  dap_data?: string
-  dap_assessment?: string
-  dap_plan?: string
-  soap_subjective?: string
-  soap_objective?: string
-  soap_assessment?: string
-  soap_plan?: string
-  is_finalized?: boolean
+  note_format?: string
+  note_content?: Record<string, string>
+  template_id?: string
   created_at?: string
   updated_at?: string
 }
 
-export interface Note {
-  id: string
+export type SessionInput = {
   client_id: string
-  content: string
-  created_at: string
-  updated_at?: string
+  session_date: string
+  summary?: string
+  note_format?: string
+  note_content?: Record<string, string>
+  template_id?: string
 }
 
-export interface ChatMessage {
-  role: string
-  content: string
-}
-
-export interface ChatResponse {
-  reply: string
-  mode?: string
-  school?: string
-}
-
-export interface ClinicalAssessment {
+export interface NoteTemplate {
   id: string
-  client_id: string
   therapist_id?: string
-  assessment_type: string
-  assessment_date?: string
-  is_current?: boolean
-  version?: number
-  identification_summary?: string
-  presenting_problem?: string
-  psychiatric_history?: string
-  trauma_history?: string
-  family_psychiatric_history?: string
-  medical_history?: string
-  current_medications?: string
-  substance_use?: string
-  family_history?: string
-  social_history?: string
-  spiritual_cultural_factors?: string
-  developmental_history?: string
-  educational_vocational_history?: string
-  legal_history?: string
-  snap_strengths?: string
-  snap_needs?: string
-  snap_abilities?: string
-  snap_preferences?: string
-  diagnosis_impressions?: string
-  risk_summary?: string
-  treatment_goals?: string
+  name: string
+  base_format?: string
+  sections: string[]
   created_at?: string
   updated_at?: string
 }
 
-// Alias used by client detail page
-export type ClientResponse = ClientDetail
-
-export interface Attendance {
-  id: string
-  client_id: string
-  session_id: string
-  attended: boolean
-  cancellation_reason?: string
-  note?: string
-  created_at: string
+export type NoteTemplateInput = {
+  name: string
+  base_format?: string
+  sections: string[]
 }
+
+export interface UserSettings {
+  id: string
+  therapist_id: string
+  default_ehr?: string | null
+  last_used_ehr?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+// ============================================================================
+// API client
+// ============================================================================
 
 class ApiClient {
   private baseUrl: string
@@ -232,10 +88,7 @@ class ApiClient {
     this.baseUrl = baseUrl
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
     let token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
 
@@ -244,376 +97,104 @@ class ApiClient {
         'Content-Type': 'application/json',
         ...(options.headers as Record<string, string>),
       }
-
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`
-      }
-
-      return fetch(url, {
-        ...options,
-        headers,
-      })
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+      return fetch(url, { ...options, headers })
     }
 
     let response = await makeRequest(token)
 
-    // If we get a 401, try to refresh the JWT token
     if (response.status === 401 && typeof window !== 'undefined') {
       try {
         const { account } = await import('./appwrite')
         const jwt = await account.createJWT()
         token = jwt.jwt
         localStorage.setItem('token', token)
-
-        // Retry the request with the new token
         response = await makeRequest(token)
       } catch (err) {
         console.error('Failed to refresh JWT:', err)
-        // If refresh fails, remove the token and let the request fail
         localStorage.removeItem('token')
       }
     }
 
     if (!response.ok) {
       const error = await response.text()
-      throw new Error(error || `HTTP ${response.status}: ${response.statusText}`)
+      if (error) {
+        let message = error
+        try {
+          const parsed = JSON.parse(error) as { detail?: string; message?: string }
+          message = parsed.detail || parsed.message || error
+        } catch {
+          message = error
+        }
+        throw new Error(message)
+      }
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
 
+    if (response.status === 204) return undefined as T
     return response.json()
   }
 
-  // Clients
-  async getClients(): Promise<ClientListItem[]> {
-    return this.request<ClientListItem[]>('/api/v1/clients/')
+  // ---- Clients ----
+  getClients(): Promise<Client[]> {
+    return this.request<Client[]>('/api/v1/clients/')
+  }
+  getClientsCount(): Promise<{ total_clients: number }> {
+    return this.request('/api/v1/clients/stats/count')
+  }
+  getClient(id: string): Promise<Client> {
+    return this.request<Client>(`/api/v1/clients/${id}`)
+  }
+  createClient(data: ClientInput): Promise<Client> {
+    return this.request<Client>('/api/v1/clients/', { method: 'POST', body: JSON.stringify(data) })
+  }
+  updateClient(id: string, data: Partial<ClientInput>): Promise<Client> {
+    return this.request<Client>(`/api/v1/clients/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+  deleteClient(id: string): Promise<void> {
+    return this.request<void>(`/api/v1/clients/${id}`, { method: 'DELETE' })
   }
 
-  async getClientsCount(): Promise<{ total_clients: number }> {
-    return this.request<{ total_clients: number }>('/api/v1/clients/stats/count')
+  // ---- Sessions ----
+  getSessions(): Promise<Session[]> {
+    return this.request<Session[]>('/api/v1/sessions/')
   }
-
-  async getSessionStats(): Promise<{ total_hours: number }> {
-    return this.request<{ total_hours: number }>('/api/v1/sessions/stats/totals')
+  getClientSessions(clientId: string): Promise<Session[]> {
+    return this.request<Session[]>(`/api/v1/sessions/client/${clientId}`)
   }
-
-  async getClient(id: string): Promise<ClientDetail> {
-    return this.request<ClientDetail>(`/api/v1/clients/${id}`)
-  }
-
-  async createClient(data: ClientData | Partial<ClientDetail>): Promise<ClientDetail> {
-    return this.request<ClientDetail>('/api/v1/clients/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async analyzeIntake(data: { background: string; name?: string; age?: number; gender?: string }): Promise<IntakeAnalysis> {
-    return this.request<IntakeAnalysis>('/api/v1/ai/intake-analysis', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async createClinicalAssessment(data: {
-    client_id: string
-    assessment_type: string
-    identification_summary?: string
-    presenting_problem?: string
-    psychiatric_history?: string
-    trauma_history?: string
-    family_psychiatric_history?: string
-    medical_history?: string
-    current_medications?: string
-    substance_use?: string
-    family_history?: string
-    social_history?: string
-    spiritual_cultural_factors?: string
-    developmental_history?: string
-    educational_vocational_history?: string
-    legal_history?: string
-    snap_strengths?: string
-    snap_needs?: string
-    snap_abilities?: string
-    snap_preferences?: string
-    is_current?: boolean
-  }): Promise<Record<string, unknown>> {
-    return this.request('/api/v1/clinical-assessments/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async getClientAssessments(clientId: string): Promise<ClinicalAssessment[]> {
-    return this.request<ClinicalAssessment[]>(`/api/v1/clinical-assessments/client/${clientId}`)
-  }
-
-  async getCurrentAssessment(clientId: string): Promise<ClinicalAssessment | null> {
-    try {
-      return await this.request<ClinicalAssessment>(`/api/v1/clinical-assessments/client/${clientId}/current`)
-    } catch {
-      return null
-    }
-  }
-
-  async convertNoteFormat(
-    freeText: string,
-    targetFormat: 'BIRP' | 'DAP' | 'SOAP'
-  ): Promise<{
-    behavior?: string; intervention?: string; response?: string;
-    data?: string; subjective?: string; objective?: string;
-    assessment?: string; plan?: string;
-  }> {
-    return this.request('/api/v1/ai/convert-notes', {
-      method: 'POST',
-      body: JSON.stringify({ free_text: freeText, target_format: targetFormat }),
-    })
-  }
-
-  async speechToText(audioBlob: Blob, filename = 'recording.webm'): Promise<string> {
-    const url = `${this.baseUrl}/api/v1/ai/speech-to-text`
-    const formData = new FormData()
-    formData.append('file', audioBlob, filename)
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    const headers: Record<string, string> = {}
-    if (token) headers['Authorization'] = `Bearer ${token}`
-    const response = await fetch(url, { method: 'POST', headers, body: formData })
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error || `HTTP ${response.status}`)
-    }
-    const result = await response.json()
-    return result.text as string
-  }
-
-  async updateClient(id: string, data: Partial<ClientDetail>): Promise<ClientDetail> {
-    return this.request<ClientDetail>(`/api/v1/clients/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async deleteClient(id: string): Promise<void> {
-    return this.request<void>(`/api/v1/clients/${id}`, {
-      method: 'DELETE',
-    })
-  }
-
-  // Chat
-  async clientChat(
-    clientId: string,
-    mode: string,
-    messages: ChatMessage[]
-  ): Promise<ChatResponse> {
-    return this.request<ChatResponse>('/api/v1/ai/chat/client', {
-      method: 'POST',
-      body: JSON.stringify({ client_id: clientId, mode, messages }),
-    })
-  }
-
-  async schoolChat(
-    clientId: string,
-    school: string,
-    messages: ChatMessage[]
-  ): Promise<ChatResponse> {
-    return this.request<ChatResponse>('/api/v1/ai/chat/school', {
-      method: 'POST',
-      body: JSON.stringify({ client_id: clientId, school, messages }),
-    })
-  }
-
-  async *streamClientChat(
-    clientId: string,
-    mode: string,
-    messages: ChatMessage[]
-  ): AsyncGenerator<string> {
-    const url = `${this.baseUrl}/api/v1/ai/chat/client/stream`
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (token) headers['Authorization'] = `Bearer ${token}`
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ client_id: clientId, mode, messages }),
-    })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    yield* this._consumeSSE(response)
-  }
-
-  async *streamSchoolChat(
-    clientId: string,
-    school: string,
-    messages: ChatMessage[]
-  ): AsyncGenerator<string> {
-    const url = `${this.baseUrl}/api/v1/ai/chat/school/stream`
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (token) headers['Authorization'] = `Bearer ${token}`
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ client_id: clientId, school, messages }),
-    })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    yield* this._consumeSSE(response)
-  }
-
-  private async *_consumeSSE(response: Response): AsyncGenerator<string> {
-    const reader = response.body!.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() ?? ''
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue
-        const data = line.slice(6)
-        if (data === '[DONE]') return
-        try {
-          const parsed = JSON.parse(data)
-          if (parsed.token) yield parsed.token
-        } catch { /* skip malformed lines */ }
-      }
-    }
-  }
-
-  async getClientSessions(clientId: string): Promise<Session[]> {
-    const all = await this.request<Session[]>('/api/v1/sessions/')
-    return all.filter(s => s.client_id === clientId)
-  }
-
-  // Sessions
-  async getLatestClientSession(clientId: string): Promise<Session | null> {
-    try {
-      return await this.request<Session>(`/api/v1/sessions/client/${clientId}/latest`)
-    } catch {
-      return null
-    }
-  }
-
-  async getSessions(clientId?: string): Promise<Session[]> {
-    const endpoint = clientId
-      ? `/api/v1/clients/${clientId}/sessions/`
-      : '/api/v1/sessions/'
-    return this.request<Session[]>(endpoint)
-  }
-
-  async getSession(id: string): Promise<Session> {
+  getSession(id: string): Promise<Session> {
     return this.request<Session>(`/api/v1/sessions/${id}`)
   }
-
-  async createSession(data: Partial<Session> & {
-    client_id: string
-    session_date: string
-    duration_minutes: number
-    session_type: string
-  }): Promise<Session> {
-    return this.request<Session>('/api/v1/sessions/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+  createSession(data: SessionInput): Promise<Session> {
+    return this.request<Session>('/api/v1/sessions/', { method: 'POST', body: JSON.stringify(data) })
+  }
+  updateSession(id: string, data: Partial<SessionInput>): Promise<Session> {
+    return this.request<Session>(`/api/v1/sessions/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+  deleteSession(id: string): Promise<void> {
+    return this.request<void>(`/api/v1/sessions/${id}`, { method: 'DELETE' })
   }
 
-  async updateSession(id: string, data: Partial<Session>): Promise<Session> {
-    return this.request<Session>(`/api/v1/sessions/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
+  // ---- Note Templates ----
+  getTemplates(): Promise<NoteTemplate[]> {
+    return this.request<NoteTemplate[]>('/api/v1/templates/')
+  }
+  createTemplate(data: NoteTemplateInput): Promise<NoteTemplate> {
+    return this.request<NoteTemplate>('/api/v1/templates/', { method: 'POST', body: JSON.stringify(data) })
+  }
+  updateTemplate(id: string, data: Partial<NoteTemplateInput>): Promise<NoteTemplate> {
+    return this.request<NoteTemplate>(`/api/v1/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+  deleteTemplate(id: string): Promise<void> {
+    return this.request<void>(`/api/v1/templates/${id}`, { method: 'DELETE' })
   }
 
-  async deleteSession(id: string): Promise<void> {
-    return this.request<void>(`/api/v1/sessions/${id}`, {
-      method: 'DELETE',
-    })
+  // ---- User Settings (EHR) ----
+  getUserSettings(): Promise<UserSettings> {
+    return this.request<UserSettings>('/api/v1/settings/')
   }
-
-  // Transcription
-  async uploadTranscription(file: File, clientId: string): Promise<{ transcript: string }> {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('client_id', clientId)
-
-    const url = `${this.baseUrl}/api/v1/transcribe/`
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData,
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error || `HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return response.json()
-  }
-
-  // AI Insights
-  async getAIInsights(sessionId: string): Promise<{ insights: string }> {
-    return this.request<{ insights: string }>(`/api/v1/sessions/${sessionId}/ai-insights/`)
-  }
-
-  // Notes
-  async getNotes(clientId: string): Promise<Note[]> {
-    return this.request<Note[]>(`/api/v1/clients/${clientId}/notes/`)
-  }
-
-  async createNote(clientId: string, content: string): Promise<Note> {
-    return this.request<Note>(`/api/v1/clients/${clientId}/notes/`, {
-      method: 'POST',
-      body: JSON.stringify({ content }),
-    })
-  }
-
-  async updateNote(id: string, content: string): Promise<Note> {
-    return this.request<Note>(`/api/v1/notes/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({ content }),
-    })
-  }
-
-  async deleteNote(id: string): Promise<void> {
-    return this.request<void>(`/api/v1/notes/${id}`, {
-      method: 'DELETE',
-    })
-  }
-
-  // Attendance
-  async getAttendance(clientId: string): Promise<Attendance[]> {
-    return this.request<Attendance[]>(`/api/v1/clients/${clientId}/attendance/`)
-  }
-
-  async markAttendance(sessionId: string, attended: boolean, note?: string): Promise<Attendance> {
-    return this.request<Attendance>('/api/v1/attendance/', {
-      method: 'POST',
-      body: JSON.stringify({ session_id: sessionId, attended, note }),
-    })
-  }
-
-  // Session Notes
-  async getSessionNote(sessionId: string): Promise<SessionNote | null> {
-    try {
-      return await this.request<SessionNote>(`/api/v1/session-notes/session/${sessionId}`)
-    } catch {
-      return null
-    }
-  }
-
-  async createSessionNote(data: Omit<SessionNote, 'id' | 'therapist_id' | 'created_at' | 'updated_at'>): Promise<SessionNote> {
-    return this.request<SessionNote>('/api/v1/session-notes/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async updateSessionNote(id: string, data: Partial<Omit<SessionNote, 'id' | 'session_id' | 'client_id' | 'therapist_id' | 'created_at' | 'updated_at'>>): Promise<SessionNote> {
-    return this.request<SessionNote>(`/api/v1/session-notes/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
+  updateUserSettings(data: { default_ehr?: string; last_used_ehr?: string }): Promise<UserSettings> {
+    return this.request<UserSettings>('/api/v1/settings/', { method: 'PUT', body: JSON.stringify(data) })
   }
 }
 

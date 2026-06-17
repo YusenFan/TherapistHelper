@@ -154,8 +154,7 @@ APPWRITE_API_KEY=your-api-key
 # OpenAI (Whisper)
 OPENAI_API_KEY=sk-your-openai-key
 
-# Tinfoil.sh (LLM)
-TINFOIL_API_KEY=tk_Y8afZljtIO7bsSE4joTfmRlbuwNLAMZjRnWNawl3MLcjP1B0
+
 
 # Security
 SECRET_KEY=your-secret-key

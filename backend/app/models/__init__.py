@@ -1,92 +1,41 @@
 """
-Models package for TherapistHelper
+Models package for Therabee
 """
 from .models import (
     # Enums
-    ClientStatus,
-    AssessmentType,
-    SessionType,
-    SessionModality,
-    SessionStatus,
+    ClientType,
     NoteFormat,
-    # Client Models
+    EHRPlatform,
+    # Client
     ClientCreate,
     ClientUpdate,
     ClientResponse,
-    # Clinical Assessment Models
-    ClinicalAssessmentCreate,
-    ClinicalAssessmentUpdate,
-    ClinicalAssessmentResponse,
-    # Session Models
-    FollowupAction,
+    # Session
     SessionCreate,
     SessionUpdate,
     SessionResponse,
-    # Session Note Models
-    SessionNoteCreate,
-    SessionNoteUpdate,
-    SessionNoteResponse,
-    # Transcript Models
-    TranscriptUpload,
-    TranscriptResponse,
-    # Analysis Models
-    IntakeAnalysisRequest,
-    IntakeAnalysisResponse,
-    AnalysisRequest,
-    AnalysisResponse,
-    # Session Helper Models
-    SessionAgendaRequest,
-    SessionAgendaResponse,
-    SessionLogRequest,
-    SessionLogResponse,
-    # Note Conversion Models
-    NoteConvertRequest,
-    NoteConvertResponse,
-    # Chat Models
-    ChatMode,
-    PsychologicalSchool,
-    ChatMessage,
-    ClientChatRequest,
-    SchoolChatRequest,
-    ChatResponse,
+    # Note Template
+    NoteTemplateCreate,
+    NoteTemplateUpdate,
+    NoteTemplateResponse,
+    # User Settings
+    UserSettingsUpdate,
+    UserSettingsResponse,
 )
 
 __all__ = [
-    "ClientStatus",
-    "AssessmentType",
-    "SessionType",
-    "SessionModality",
-    "SessionStatus",
+    "ClientType",
     "NoteFormat",
+    "EHRPlatform",
     "ClientCreate",
     "ClientUpdate",
     "ClientResponse",
-    "ClinicalAssessmentCreate",
-    "ClinicalAssessmentUpdate",
-    "ClinicalAssessmentResponse",
-    "FollowupAction",
     "SessionCreate",
     "SessionUpdate",
     "SessionResponse",
-    "SessionNoteCreate",
-    "SessionNoteUpdate",
-    "SessionNoteResponse",
-    "TranscriptUpload",
-    "TranscriptResponse",
-    "IntakeAnalysisRequest",
-    "IntakeAnalysisResponse",
-    "AnalysisRequest",
-    "AnalysisResponse",
-    "SessionAgendaRequest",
-    "SessionAgendaResponse",
-    "SessionLogRequest",
-    "SessionLogResponse",
-    "NoteConvertRequest",
-    "NoteConvertResponse",
-    "ChatMode",
-    "PsychologicalSchool",
-    "ChatMessage",
-    "ClientChatRequest",
-    "SchoolChatRequest",
-    "ChatResponse",
+    "NoteTemplateCreate",
+    "NoteTemplateUpdate",
+    "NoteTemplateResponse",
+    "UserSettingsUpdate",
+    "UserSettingsResponse",
 ]

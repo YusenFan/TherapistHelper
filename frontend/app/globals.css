@@ -2,20 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 * {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
 }
 
+:root {
+  --font-sans: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+  --landing-cream: #f6f0e6;
+  --landing-paper: #fffaf4;
+  --landing-ink: #233446;
+  --landing-muted: #5d6c77;
+  --landing-line: rgba(35, 52, 70, 0.12);
+  --landing-coral: #e79a78;
+  --landing-honey: #f0c980;
+  --landing-sage: #bfd2c0;
+}
+
 html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   background-color: #F4F4F9;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -44,4 +56,32 @@ a {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #96D3D6;
-} 
+}
+
+.font-editorial {
+  font-family: var(--font-serif);
+}
+
+.landing-shell {
+  background:
+    radial-gradient(circle at top left, rgba(240, 201, 128, 0.24), transparent 26%),
+    radial-gradient(circle at top right, rgba(231, 154, 120, 0.16), transparent 22%),
+    linear-gradient(180deg, var(--landing-paper) 0%, #fffdf9 42%, #fff7ef 100%);
+}
+
+.landing-noise {
+  position: relative;
+}
+
+.landing-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.26)),
+    radial-gradient(rgba(35, 52, 70, 0.06) 0.6px, transparent 0.6px);
+  background-size: auto, 18px 18px;
+  mask-image: linear-gradient(180deg, black, transparent 92%);
+}

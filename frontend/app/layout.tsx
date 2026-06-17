@@ -1,11 +1,10 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import MainLayout from '@/components/MainLayout'
 import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata: Metadata = {
   title: 'TheraBee',
-  description: 'Session Assistant for Therapists',
+  description: 'Private clinical workflow support for therapists.',
 }
 
 export default function RootLayout({
@@ -15,11 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="font-inter bg-therapy-gray text-therapy-navy">
+      <body className="bg-therapy-gray text-therapy-navy">
         <AuthProvider>
-          <MainLayout>{children}</MainLayout>
+          {children}
         </AuthProvider>
       </body>
     </html>
   )
-} 
+}

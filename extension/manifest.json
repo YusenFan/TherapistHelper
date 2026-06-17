@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Therabee EHR Sync",
+  "version": "0.2.0",
+  "description": "Sync saved session notes (any format) from Therabee into your EHR note page.",
+  "permissions": ["storage", "activeTab", "tabs"],
+  "host_permissions": [
+    "https://*.therapynotes.com/*",
+    "https://sfo.cloud.appwrite.io/*",
+    "https://therapisthelper-backend.onrender.com/*",
+    "http://localhost:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Therabee EHR Sync"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.therapynotes.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
