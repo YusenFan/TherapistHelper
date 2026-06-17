@@ -1,65 +1,68 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { apiClient, type Session, type Client } from '@/lib/api'
-import { formatLabel } from '@/lib/noteFormats'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import GoogleCalendar from '@/components/GoogleCalendar'
+import WriteDictateModal from '@/components/WriteDictateModal'
 
-export default function SessionsPage() {
-  const [sessions, setSessions] = useState<Session[]>([])
-  const [clientsById, setClientsById] = useState<Record<string, Client>>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export default function DashboardPage() {
+  const router = useRouter()
+  const [modalOpen, setModalOpen] = useState(false)
 
-  useEffect(() => {
-    Promise.all([apiClient.getSessions(), apiClient.getClients()])
-      .then(([s, c]) => {
-        setSessions(s)
-        setClientsById(Object.fromEntries(c.map(x => [x.id, x])))
-      })
-      .catch(e => setError(e instanceof Error ? e.message : 'Failed to load sessions'))
-      .finally(() => setLoading(false))
-  }, [])
+  const handleWriteDictate = () => setModalOpen(true)
+
+  const handleContinue = (params: URLSearchParams) => {
+    setModalOpen(false)
+    const qs = params.toString()
+    router.push(qs ? `/sessions/new?${qs}` : '/sessions/new')
+  }
+
+  const handleUpload = () => {
+    // Stub: wire up later
+  }
 
   return (
     <div className="min-h-screen">
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-therapy-navy">Sessions</h1>
-            <p className="text-gray-600 mt-1">All session notes across your clients</p>
-          </div>
-          <Link href="/sessions/new" className="px-5 py-2.5 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 font-medium">
-            + New Session
-          </Link>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <h1 className="text-3xl font-bold text-therapy-navy">Dashboard</h1>
+          <p className="text-gray-600 mt-1">Start a new note or review your schedule.</p>
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {loading && <p className="text-gray-500">Loading…</p>}
-        {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">{error}</div>}
+      <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            type="button"
+            onClick={handleWriteDictate}
+            className="flex-1 flex items-center justify-center gap-2 px-5 py-4 bg-therapy-coral text-white rounded-xl font-medium hover:bg-opacity-90 transition-colors shadow-sm"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+            Write / Dictate
+          </button>
 
-        {!loading && !error && sessions.length === 0 && (
-          <p className="text-gray-500">No sessions yet.</p>
-        )}
+          <button
+            type="button"
+            onClick={handleUpload}
+            className="flex-1 flex items-center justify-center gap-2 px-5 py-4 bg-white text-therapy-navy border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Upload
+          </button>
+        </div>
 
-        {!loading && !error && sessions.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 divide-y">
-            {sessions.map(s => (
-              <Link key={s.id} href={`/sessions/${s.id}`} className="flex items-center justify-between px-5 py-4 hover:bg-gray-50">
-                <div className="min-w-0">
-                  <p className="font-medium text-therapy-navy">
-                    {clientsById[s.client_id]?.name ?? 'Unknown client'}
-                    <span className="text-gray-400 font-normal"> · {new Date(s.session_date).toLocaleDateString()}</span>
-                  </p>
-                  <p className="text-sm text-gray-500 truncate max-w-xl">{s.summary || 'No summary'}</p>
-                </div>
-                <span className="text-xs font-medium text-gray-400 flex-shrink-0 ml-4">{formatLabel(s.note_format)}</span>
-              </Link>
-            ))}
-          </div>
-        )}
+        <GoogleCalendar />
       </main>
+
+      <WriteDictateModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onContinue={handleContinue}
+      />
     </div>
   )
 }

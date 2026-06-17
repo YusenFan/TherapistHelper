@@ -1,6 +1,12 @@
-// TheraBee EHR Transfer - background service worker
-// Minimal: kept for future needs (e.g. opening the default EHR).
+// Therabee EHR Sync - background service worker
+//
+// Opens the side panel when the user clicks the toolbar action, rather than
+// showing a popup.
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('TheraBee EHR Transfer installed');
+  console.log('Therabee EHR Sync installed');
 });
+
+chrome.sidePanel
+  .setPanelBehavior({ openPanelOnActionClick: true })
+  .catch((error) => console.error('sidePanel.setPanelBehavior failed:', error));
