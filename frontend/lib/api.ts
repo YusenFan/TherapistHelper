@@ -196,6 +196,41 @@ class ApiClient {
   updateUserSettings(data: { default_ehr?: string; last_used_ehr?: string }): Promise<UserSettings> {
     return this.request<UserSettings>('/api/v1/settings/', { method: 'PUT', body: JSON.stringify(data) })
   }
+
+  // ---- AI ----
+  async transcribeAudio(audio: Blob, language?: string): Promise<{ transcript: string; language?: string }> {
+    const form = new FormData()
+    const ext = (audio.type.split('/')[1] || 'webm').split(';')[0]
+    form.append('audio', audio, `recording.${ext}`)
+    if (language) form.append('language', language)
+
+    const url = `${this.baseUrl}/api/v1/ai/transcribe`
+    let token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const send = (t: string | null) => fetch(url, {
+      method: 'POST',
+      headers: t ? { Authorization: `Bearer ${t}` } : undefined,
+      body: form,
+    })
+    let res = await send(token)
+    if (res.status === 401 && typeof window !== 'undefined') {
+      const { account } = await import('./appwrite')
+      const jwt = await account.createJWT()
+      token = jwt.jwt
+      localStorage.setItem('token', token)
+      res = await send(token)
+    }
+    if (!res.ok) throw new Error(await res.text())
+    return res.json()
+  }
+
+  generateNote(data: {
+    summary: string
+    note_format?: string
+    sections: string[]
+    client_context?: string
+  }): Promise<{ note_content: Record<string, string> }> {
+    return this.request('/api/v1/ai/generate-note', { method: 'POST', body: JSON.stringify(data) })
+  }
 }
 
 export const apiClient = new ApiClient()

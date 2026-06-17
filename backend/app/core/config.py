@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     COLLECTION_NOTE_TEMPLATES: str = "note_templates"
     COLLECTION_USER_SETTINGS: str = "user_settings"
 
+    # LLM (Tinfoil) — OpenAI-compatible endpoint used for note generation
+    TINFOIL_API_KEY: str = os.getenv("TINFOIL_API_KEY", "")
+    TINFOIL_BASE_URL: str = os.getenv("TINFOIL_BASE_URL", "https://inference.tinfoil.sh/v1")
+    TINFOIL_MODEL: str = os.getenv("TINFOIL_MODEL", "llama3-3-70b")
+
+    # Deepgram (multilingual speech-to-text)
+    DEEPGRAM_API_KEY: str = os.getenv("DEEPGRAM_API_KEY", "")
+    DEEPGRAM_MODEL: str = os.getenv("DEEPGRAM_MODEL", "nova-3")
+
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 

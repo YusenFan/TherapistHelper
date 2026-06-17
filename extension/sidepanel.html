@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="logo">🐝</span>
+      <span class="brand-name">Therabee</span>
+    </div>
+    <button id="btn-back" class="icon-btn hidden" title="Back">←</button>
+  </header>
+
+  <!-- ================= Login view ================= -->
+  <section id="view-login" class="view hidden">
+    <div class="centered">
+      <h1 class="display">Welcome to Therabee's Extension</h1>
+      <p class="lead">Transfer your notes to your EHR—seamlessly and stress-free.</p>
+
+      <div class="field">
+        <label for="login-email">Email <span class="req">*</span></label>
+        <input id="login-email" type="email" autocomplete="email" />
+      </div>
+
+      <div class="field">
+        <label for="login-password">Password <span class="req">*</span></label>
+        <input id="login-password" type="password" autocomplete="current-password" />
+      </div>
+
+      <button id="btn-login" class="primary block">Sign in</button>
+      <p id="login-error" class="error hidden"></p>
+
+      <p class="muted small center mt">
+        Don't have an account?
+        <a href="https://therapisthelper-frontend.onrender.com/signup" target="_blank" rel="noopener">Sign up</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= EHR onboarding view ================= -->
+  <section id="view-ehr-onboarding" class="view hidden">
+    <div class="centered">
+      <h1 class="display">Select your EHR</h1>
+      <p class="lead">Last step: select your EHR below. We'll open it for you automatically next time you transfer your notes.</p>
+
+      <div class="field">
+        <label for="onboarding-ehr">Select your primary EHR <span class="req">*</span></label>
+        <select id="onboarding-ehr">
+          <option value="">Select your primary EHR</option>
+          <option value="therapynotes">TherapyNotes</option>
+          <option value="simplepractice">SimplePractice</option>
+          <option value="janeapp">Jane App</option>
+        </select>
+      </div>
+
+      <button id="btn-onboarding-proceed" class="primary block" disabled>Proceed</button>
+      <button id="btn-onboarding-skip" class="link block">Skip</button>
+    </div>
+  </section>
+
+  <!-- ================= List view ================= -->
+  <section id="view-list" class="view hidden">
+    <div class="user-bar">
+      <span id="user-email" class="muted small ellipsis"></span>
+      <button id="btn-logout" class="link tiny">Sign out</button>
+    </div>
+
+    <div class="field">
+      <label>EHR</label>
+      <div class="row gap">
+        <select id="select-ehr" class="flex">
+          <option value="therapynotes">TherapyNotes</option>
+          <option value="simplepractice">SimplePractice</option>
+          <option value="janeapp">Jane App</option>
+        </select>
+        <button id="btn-open-ehr" class="link tiny">Open ↗</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Client</label>
+      <select id="select-client"><option value="">Loading clients…</option></select>
+    </div>
+
+    <div class="field">
+      <label>Session note</label>
+      <select id="select-session" disabled><option value="">Select a client first</option></select>
+    </div>
+
+    <p id="list-error" class="error hidden"></p>
+  </section>
+
+  <!-- ================= Detail view ================= -->
+  <section id="view-detail" class="view hidden">
+    <h1 id="detail-title" class="title">Session</h1>
+    <p id="detail-subtitle" class="muted small mb"></p>
+
+    <button id="btn-insert" class="primary block lg">
+      <span class="sparkle">✦</span>
+      Insert to EHR
+    </button>
+
+    <p class="muted small center">
+      Keep the extension open and navigate to your EHR note to insert the note automatically.
+    </p>
+
+    <div id="page-status-card" class="status-card">
+      <span id="page-status-dot" class="dot"></span>
+      <span id="page-status" class="status-text">Checking page…</span>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span id="detail-client-name" class="client-name">—</span>
+        <span id="detail-client-type" class="tag">—</span>
+      </div>
+
+      <h2 class="section-title">Session details</h2>
+      <div class="grid-2">
+        <div>
+          <div class="label-sm">Session date</div>
+          <div id="detail-date" class="value">—</div>
+        </div>
+        <div>
+          <div class="label-sm">Note format</div>
+          <div id="detail-format" class="value">—</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="section-title mt">Note preview</h3>
+    <div id="preview-sections" class="preview"></div>
+
+    <p id="detail-error" class="error hidden"></p>
+  </section>
+
+  <!-- ================= Result view ================= -->
+  <section id="view-result" class="view hidden">
+    <div class="centered">
+      <div id="result-icon" class="result-icon"></div>
+      <h2 id="result-title" class="title center"></h2>
+      <p id="result-detail" class="muted center"></p>
+      <ul id="result-fields" class="field-results"></ul>
+      <button id="btn-done" class="primary block">Done</button>
+    </div>
+  </section>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
