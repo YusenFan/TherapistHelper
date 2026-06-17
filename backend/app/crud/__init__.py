@@ -1,14 +1,14 @@
 """
-CRUD package for TherapistHelper
+CRUD package for Therabee
 """
 from .client import client_crud
 from .session import session_crud
-from .clinical_assessment import clinical_assessment_crud
-from .session_note import session_note_crud
+from .note_template import note_template_crud
+from .user_settings import user_settings_crud
 
 __all__ = [
     "client_crud",
     "session_crud",
-    "clinical_assessment_crud",
-    "session_note_crud",
+    "note_template_crud",
+    "user_settings_crud",
 ]

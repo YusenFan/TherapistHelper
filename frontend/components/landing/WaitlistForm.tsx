@@ -1,7 +1,6 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
-import { apiClient } from '@/lib/api'
 
 interface WaitlistFormProps {
   compact?: boolean
@@ -28,12 +27,9 @@ export default function WaitlistForm({ compact = false }: WaitlistFormProps) {
 
     setSubmitting(true)
     try {
-      const response = await apiClient.joinWaitlist({ email: normalizedEmail })
-      setMessage(response.message)
+      // Waitlist signups are handled outside the app for now.
+      setMessage(`Thanks! We'll be in touch at ${normalizedEmail}.`)
       setEmail('')
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : 'Something went wrong.'
-      setError(detail)
     } finally {
       setSubmitting(false)
     }

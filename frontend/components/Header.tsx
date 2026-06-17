@@ -6,21 +6,21 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <Link href="/dashboard">
+            <Link href="/clients">
               <h1 className="text-xl font-semibold text-therapy-navy cursor-pointer">
-                TheraBee
+                Therabee
               </h1>
             </Link>
           </div>
-          
+
           <nav className="flex space-x-8">
-            <Link 
-              href="/dashboard" 
+            <Link
+              href="/sessions"
               className="text-therapy-navy hover:text-therapy-coral transition-colors font-medium"
             >
-              Dashboard
+              Sessions
             </Link>
-            <Link 
+            <Link
               href="/clients" 
               className="text-therapy-navy hover:text-therapy-coral transition-colors font-medium"
             >

@@ -1,52 +1,59 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'motion/react'
+import therabeeLogo from '@/assets/therabee_logo_only.png'
 import WaitlistForm from './WaitlistForm'
 
-const storySteps = [
+const capabilities = [
   {
-    title: 'Prep without scramble',
-    description: 'Walk into session with the right context, prompts, and goals already surfaced.',
+    title: 'Clinical Documentation',
+    description: 'Create client profiles and turn brief voice notes or session summaries into high-quality clinical documentation.',
+    items: ['Progress notes', 'Treatment plans', 'Intake summaries', 'Termination notes'],
   },
   {
-    title: 'Capture the important parts',
-    description: 'Let AI reduce the note burden so your attention stays with the client, not the clock.',
+    title: 'Professional Writing',
+    description: 'Draft everyday practice communications with a tone that stays clear, professional, and clinically appropriate.',
+    items: ['Client emails', 'Referral letters', 'Consultation summaries', 'Administrative correspondence'],
   },
   {
-    title: 'Reflect with more clarity',
-    description: 'Turn transcripts and summaries into better follow-through, sharper patterns, and steadier care.',
+    title: 'Clinical Reflection',
+    description: 'Reflect on patterns, themes, and treatment considerations across client records with therapist-centered support.',
+    items: ['Pattern tracking', 'Treatment themes', 'Case formulation prompts', 'Next-session considerations'],
   },
 ]
 
 const trustPoints = [
   {
-    title: 'Confidential LLM processing',
-    description: 'AI support is designed around confidentiality so sensitive therapy work is not treated like casual consumer prompts.',
+    title: 'Compliance you can stand behind',
+    description: 'TheraBee is built to be compliant with GDPR, CCPA, HIPAA, and SOC 2, giving your practice a privacy foundation that matches the seriousness of clinical care.',
   },
   {
-    title: 'Protected client data',
-    description: 'Client records stay protected with encrypted storage patterns and clear separation between workflow help and raw information.',
+    title: 'Private tools, not data harvesting',
+    description: 'Your notes, transcripts, and client context are not used to train outside systems. Therabee helps you think and document without learning from your clients.',
   },
   {
-    title: 'Built for therapist judgment',
-    description: 'TheraBee supports reflection, documentation, and preparation without trying to replace the therapist in the room.',
+    title: 'Private from start to finish',
+    description: 'Client data stays protected across the whole workflow, from capture to analysis to storage, so sensitive therapeutic work remains held with care.',
   },
 ]
 
-const featureStrip = [
-  'Session prep that starts from context instead of blank pages',
-  'Summaries and insights that reduce repetitive admin work',
-  'A workflow that helps you stay present and clinically sharper',
+const chatToolConcerns = [
+  'Client details can become mixed across conversations or workflows.',
+  'Consumer writing tools are not designed around psychotherapy documentation.',
+  'Clinical relevance, privacy expectations, and record separation are left for you to manage.',
+]
+
+const workflowPoints = [
+  'Spend less time documenting and more time practicing therapy.',
+  'Keep client confidentiality at the center of the work outside the therapy room.',
+  'Use one private clinical workspace instead of scattered notes, prompts, and drafts.',
 ]
 
 function BeeMark() {
   return (
-    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--landing-coral)] text-white shadow-[0_18px_40px_rgba(231,154,120,0.25)]">
-      <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 3v2m6.364.636-1.414 1.414M21 12h-2m-1.222 5.778-1.414-1.414M12 19v2m-4.364-4.636-1.414 1.414M5 12H3m4.636-6.364L6.222 7.05M9 14a3 3 0 1 1 6 0c0 1.105-.597 1.983-1.33 2.74-.514.53-.67.878-.67 1.26H11c0-.382-.156-.73-.67-1.26C9.597 15.983 9 15.105 9 14Z" />
-      </svg>
-    </div>
+    <Image src={therabeeLogo} alt="TheraBee logo" width={44} height={44} className="h-11 w-11 rounded-full" priority />
   )
 }
 
@@ -89,15 +96,12 @@ export default function LandingPage() {
             </Link>
 
             <nav className="hidden items-center gap-8 text-sm text-[var(--landing-muted)] md:flex">
-              <a href="#story" className="transition hover:text-[var(--landing-ink)]">How it works</a>
+              <a href="#about" className="transition hover:text-[var(--landing-ink)]">What it is</a>
+              <a href="#capabilities" className="transition hover:text-[var(--landing-ink)]">What it does</a>
               <a href="#trust" className="transition hover:text-[var(--landing-ink)]">Privacy</a>
-              <a href="#waitlist" className="transition hover:text-[var(--landing-ink)]">Waitlist</a>
             </nav>
 
             <div className="flex items-center gap-3">
-              <Link href="/login" className="hidden text-sm font-medium text-[var(--landing-ink)] sm:inline-flex">
-                Sign in
-              </Link>
               <a
                 href="#waitlist"
                 className="inline-flex items-center rounded-full border border-[var(--landing-line)] bg-white px-4 py-2 text-sm font-semibold text-[var(--landing-ink)] shadow-sm transition hover:-translate-y-0.5"
@@ -116,63 +120,48 @@ export default function LandingPage() {
             className="mx-auto max-w-4xl text-center"
           >
             <div className="mb-6 inline-flex items-center rounded-full border border-[var(--landing-line)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--landing-muted)] shadow-sm">
-              Confidential AI for therapy workflows
+              Created by therapists, for therapists
             </div>
 
             <h1 className="font-editorial text-5xl font-semibold leading-[0.95] tracking-tight text-[var(--landing-ink)] sm:text-6xl lg:text-7xl">
-              AI can simplify your workflow and help you become a better therapist.
+              Save Your Time and Become a Better Therapist.
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[var(--landing-muted)] sm:text-xl">
-              Warm, thoughtful support for prep, notes, and reflection, so more of your energy stays where it matters most: with the person in front of you.
+              Therabee helps with documentation, professional writing, and clinical reflection while keeping client confidentiality at the center.
             </p>
 
-            <p className="mx-auto mt-5 max-w-2xl text-sm font-medium uppercase tracking-[0.18em] text-[var(--landing-ink)]/80">
-              All LLM usage is confidential. Client data stays protected and encrypted.
+            <p className="mx-auto mt-5 max-w-2xl inline-block rounded-full bg-[rgba(240,201,128,0.35)] px-5 py-1.5 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--landing-ink)]">
+              Private by design
             </p>
 
             <div id="waitlist" className="mx-auto mt-10 max-w-2xl rounded-[2rem] border border-[var(--landing-line)] bg-white/88 p-4 shadow-[0_30px_90px_rgba(35,52,70,0.08)] backdrop-blur sm:p-5">
               <WaitlistForm />
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm text-[var(--landing-muted)]">
-              <span className="rounded-full bg-white/70 px-3 py-1">Simple one-page workflow</span>
-              <span className="rounded-full bg-white/70 px-3 py-1">Built for therapist judgment</span>
-              <span className="rounded-full bg-white/70 px-3 py-1">Private by design</span>
-            </div>
-
-            <div className="mt-8">
-              <a
-                href="#story"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--landing-ink)] transition hover:gap-3"
-              >
-                Learn how it works
-                <span aria-hidden="true">v</span>
-              </a>
-            </div>
           </motion.div>
         </section>
 
-        <section id="story" className="py-16 sm:py-24">
+        <section id="about" className="py-16 sm:py-24">
           <motion.div
             {...riseIn}
             viewport={{ once: true, amount: 0.35 }}
             transition={{ duration: 0.65, ease: 'easeOut' }}
             className="mb-10 flex max-w-3xl flex-col gap-4"
           >
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--landing-muted)]">How it works</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--landing-muted)]">What is Therabee?</p>
             <h2 className="font-editorial text-4xl font-semibold leading-tight sm:text-5xl">
-              Less admin friction. More room for clinical presence.
+              A private clinical workflow tool for the work clinicians carry after session ends.
             </h2>
             <p className="max-w-2xl text-lg leading-8 text-[var(--landing-muted)]">
-              TheraBee turns a fragmented therapy workflow into one calmer rhythm, helping you prepare faster, document with less drag, and reflect with more clarity after the session.
+              As clinicians, we want to spend our time helping clients, not getting buried in documentation, paperwork, and administrative tasks. Therabee helps you complete the work that happens outside the therapy room more efficiently while keeping client confidentiality at the center of everything.
             </p>
           </motion.div>
 
           <div className="grid gap-5 lg:grid-cols-3">
-            {storySteps.map((step, index) => (
+            {workflowPoints.map((point, index) => (
               <motion.article
-                key={step.title}
+                key={point}
                 {...riseIn}
                 viewport={{ once: true, amount: 0.3 }}
                 transition={{ duration: 0.6, delay: reduceMotion ? 0 : index * 0.08, ease: 'easeOut' }}
@@ -181,8 +170,7 @@ export default function LandingPage() {
                 <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgba(231,154,120,0.18)] text-sm font-semibold text-[var(--landing-ink)]">
                   0{index + 1}
                 </div>
-                <h3 className="text-2xl font-semibold tracking-tight">{step.title}</h3>
-                <p className="mt-4 text-base leading-7 text-[var(--landing-muted)]">{step.description}</p>
+                <p className="text-lg font-semibold leading-7 text-[var(--landing-ink)]">{point}</p>
               </motion.article>
             ))}
           </div>
@@ -197,17 +185,17 @@ export default function LandingPage() {
           >
             <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--landing-muted)]">What gets simpler</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--landing-muted)]">Why not just use ChatGPT?</p>
                 <h2 className="font-editorial mt-3 text-4xl font-semibold leading-tight sm:text-5xl">
-                  Notes, prep, and reflection finally feel connected.
+                  Psychotherapy needs more than a general chat box.
                 </h2>
                 <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--landing-muted)]">
-                  Instead of bouncing between recordings, notes, memory, and admin tasks, you get one place where context carries forward and AI helps reduce the clerical load.
+                  Consumer writing tools can be useful, but they are not built around client records, clinical continuity, or the privacy expectations of psychotherapy. Therabee is organized around confidential clinical work, so client context stays separated, relevant, and easier to trust.
                 </p>
               </div>
 
               <div className="grid gap-3 rounded-[1.8rem] border border-[var(--landing-line)] bg-[linear-gradient(180deg,rgba(240,201,128,0.16),rgba(255,255,255,0.95))] p-4">
-                {featureStrip.map((item, index) => (
+                {chatToolConcerns.map((item, index) => (
                   <motion.div
                     key={item}
                     initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 16 }}
@@ -224,6 +212,45 @@ export default function LandingPage() {
           </motion.div>
         </section>
 
+        <section id="capabilities" className="py-16 sm:py-24">
+          <motion.div
+            {...riseIn}
+            viewport={{ once: true, amount: 0.35 }}
+            transition={{ duration: 0.65, ease: 'easeOut' }}
+            className="mb-10 flex max-w-3xl flex-col gap-4"
+          >
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--landing-muted)]">What can Therabee do?</p>
+            <h2 className="font-editorial text-4xl font-semibold leading-tight sm:text-5xl">
+              Documentation, writing, and reflection in one private clinical workspace.
+            </h2>
+            <p className="max-w-2xl text-lg leading-8 text-[var(--landing-muted)]">
+              Therabee supports the work that makes care possible but often steals time from care itself.
+            </p>
+          </motion.div>
+
+          <div className="grid gap-5 lg:grid-cols-3">
+            {capabilities.map((capability, index) => (
+              <motion.article
+                key={capability.title}
+                {...riseIn}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 0.6, delay: reduceMotion ? 0 : index * 0.08, ease: 'easeOut' }}
+                className="rounded-[2rem] border border-[var(--landing-line)] bg-white/82 p-7 shadow-[0_24px_60px_rgba(35,52,70,0.06)] backdrop-blur"
+              >
+                <h3 className="text-2xl font-semibold tracking-tight">{capability.title}</h3>
+                <p className="mt-4 text-base leading-7 text-[var(--landing-muted)]">{capability.description}</p>
+                <ul className="mt-6 space-y-3">
+                  {capability.items.map((item) => (
+                    <li key={item} className="rounded-[1rem] bg-[rgba(191,210,192,0.22)] px-4 py-3 text-sm font-semibold text-[var(--landing-ink)]">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </motion.article>
+            ))}
+          </div>
+        </section>
+
         <section id="trust" className="py-16 sm:py-24">
           <motion.div
             {...riseIn}
@@ -233,10 +260,10 @@ export default function LandingPage() {
           >
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--landing-muted)]">Trust</p>
             <h2 className="font-editorial text-4xl font-semibold leading-tight sm:text-5xl">
-              Privacy language should feel as calm as the product.
+              A private space for the work people trust you with.
             </h2>
             <p className="max-w-2xl text-lg leading-8 text-[var(--landing-muted)]">
-              The message is simple: confidential LLM support, protected client information, and a workflow that respects the seriousness of therapeutic work.
+              Therapy data is not ordinary data. Therabee treats every note, transcript, and reflection as entrusted clinical context, protected from outside-system training, leakage, and unnecessary exposure.
             </p>
           </motion.div>
 
@@ -249,7 +276,6 @@ export default function LandingPage() {
                 transition={{ duration: 0.6, delay: reduceMotion ? 0 : index * 0.08, ease: 'easeOut' }}
                 className="rounded-[1.8rem] border border-[var(--landing-line)] bg-white/82 p-6 shadow-[0_18px_45px_rgba(35,52,70,0.05)]"
               >
-                <div className="mb-4 h-10 w-10 rounded-2xl bg-[rgba(191,210,192,0.35)]" />
                 <h3 className="text-xl font-semibold tracking-tight">{point.title}</h3>
                 <p className="mt-3 text-base leading-7 text-[var(--landing-muted)]">{point.description}</p>
               </motion.article>
@@ -266,12 +292,12 @@ export default function LandingPage() {
           >
             <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white/65">Join the list</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white/65">Join the waitlist</p>
                 <h2 className="font-editorial mt-3 text-4xl font-semibold leading-tight sm:text-5xl">
                   Be first to try the calmer version of your workflow.
                 </h2>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-white/74 sm:text-lg">
-                  Join the waitlist for early access to TheraBee and we'll let you know when the private beta opens.
+                  Leave your email and we will notify you when early access opens.
                 </p>
               </div>
 

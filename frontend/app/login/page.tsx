@@ -17,7 +17,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/dashboard')
+      router.replace('/clients')
     }
   }, [user, loading, router])
 
@@ -43,7 +43,7 @@ export default function LoginPage() {
       } else {
         await register(email, password, name)
       }
-      router.replace('/dashboard')
+      router.replace('/clients')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
       setError(msg)

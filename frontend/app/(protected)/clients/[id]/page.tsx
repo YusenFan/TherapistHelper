@@ -1,1012 +1,140 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { apiClient, type ClientResponse, type ClientData, type Session, type ClinicalAssessment } from '@/lib/api'
-import ClientChat from '@/components/ClientChat'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import { apiClient, type Client, type Session, type ClientInput } from '@/lib/api'
+import { clientTypeLabel, formatLabel } from '@/lib/noteFormats'
+import ClientForm from '@/components/ClientForm'
 
-interface ClientProfileProps {
-  params: {
-    id: string
-  }
-}
-
-interface FormData {
-  full_name: string
-  preferred_name: string
-  approximate_age: string
-  gender_identity: string
-  gender_identity_other: string
-  pronouns: string
-  background_summary: string
-  email: string
-  phone: string
-}
-
-interface FormErrors {
-  full_name?: string
-  approximate_age?: string
-  general?: string
-}
-
-export default function ClientProfile({ params }: ClientProfileProps) {
+export default function ClientDetailPage() {
   const router = useRouter()
+  const params = useParams()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview')
-  const [clientData, setClientData] = useState<ClientResponse | null>(null)
+  const clientId = params.id as string
+
+  const [client, setClient] = useState<Client | null>(null)
+  const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [sessions, setSessions] = useState<Session[]>([])
-  const [sessionsLoading, setSessionsLoading] = useState(false)
-  const [sessionsError, setSessionsError] = useState<string | null>(null)
-  const [assessment, setAssessment] = useState<ClinicalAssessment | null>(null)
-  const [assessmentLoading, setAssessmentLoading] = useState(false)
-  const [assessmentError, setAssessmentError] = useState<string | null>(null)
-  
-  // Edit form state
-  const [editMode, setEditMode] = useState(false)
-  const [formData, setFormData] = useState<FormData>({
-    full_name: '',
-    preferred_name: '',
-    approximate_age: '',
-    gender_identity: '',
-    gender_identity_other: '',
-    pronouns: '',
-    background_summary: '',
-    email: '',
-    phone: '',
-  })
-  const [formErrors, setFormErrors] = useState<FormErrors>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [updateSuccess, setUpdateSuccess] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [editing, setEditing] = useState(searchParams.get('tab') === 'edit')
+  const [saving, setSaving] = useState(false)
 
-  const maxBackgroundLength = 2400
-
-  useEffect(() => {
-    const fetchClient = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const client = await apiClient.getClient(params.id)
-        setClientData(client)
-        
-        // Initialize form data with client data
-        setFormData({
-          full_name: client.full_name || '',
-          preferred_name: client.preferred_name || '',
-          approximate_age: client.approximate_age?.toString() || '',
-          gender_identity: client.gender_identity || '',
-          gender_identity_other: client.gender_identity_other || '',
-          pronouns: client.pronouns || '',
-          background_summary: client.background_summary || '',
-          email: client.email || '',
-          phone: client.phone || '',
-        })
-      } catch (err) {
-        console.error('Failed to fetch client:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load client data')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (params.id) {
-      fetchClient()
-    } else {
-      setError('Invalid client ID')
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [c, s] = await Promise.all([
+        apiClient.getClient(clientId),
+        apiClient.getClientSessions(clientId).catch(() => []),
+      ])
+      setClient(c)
+      setSessions(s)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load client')
+    } finally {
       setLoading(false)
     }
-  }, [params.id])
+  }, [clientId])
 
-  useEffect(() => {
-    if (activeTab === 'sessions' && params.id) {
-      const fetchSessions = async () => {
-        try {
-          setSessionsLoading(true)
-          setSessionsError(null)
-          const all = await apiClient.getSessions()
-          setSessions(all.filter(s => s.client_id === params.id))
-        } catch (err) {
-          setSessionsError(err instanceof Error ? err.message : 'Failed to load sessions')
-        } finally {
-          setSessionsLoading(false)
-        }
-      }
-      fetchSessions()
-    }
-  }, [activeTab, params.id])
+  useEffect(() => { load() }, [load])
 
-  useEffect(() => {
-    if (activeTab === 'assessment' && params.id) {
-      const fetchAssessment = async () => {
-        try {
-          setAssessmentLoading(true)
-          setAssessmentError(null)
-          const current = await apiClient.getCurrentAssessment(params.id)
-          setAssessment(current)
-        } catch (err) {
-          setAssessmentError(err instanceof Error ? err.message : 'Failed to load assessment')
-        } finally {
-          setAssessmentLoading(false)
-        }
-      }
-      fetchAssessment()
-    }
-  }, [activeTab, params.id])
-
-  // Form validation
-  const validateField = (name: string, value: string) => {
-    const newErrors = { ...formErrors }
-
-    switch (name) {
-      case 'full_name':
-        if (!value.trim()) {
-          newErrors.full_name = 'Client name is required'
-        } else if (value.trim().length < 2) {
-          newErrors.full_name = 'Name must be at least 2 characters'
-        } else {
-          delete newErrors.full_name
-        }
-        break
-
-      case 'approximate_age':
-        if (value && (isNaN(Number(value)) || Number(value) < 0 || Number(value) > 120)) {
-          newErrors.approximate_age = 'Age must be between 0 and 120'
-        } else {
-          delete newErrors.approximate_age
-        }
-        break
-
-      default:
-        break
-    }
-
-    setFormErrors(newErrors)
-  }
-
-  const handleInputChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }))
-    validateField(name, value)
-    
-    // Clear update success message when user starts editing
-    if (updateSuccess) {
-      setUpdateSuccess(false)
-    }
-  }
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {}
-
-    if (!formData.full_name.trim()) {
-      newErrors.full_name = 'Client name is required'
-    }
-    if (formData.approximate_age && (isNaN(Number(formData.approximate_age)) || Number(formData.approximate_age) < 0 || Number(formData.approximate_age) > 120)) {
-      newErrors.approximate_age = 'Please enter a valid age (0-120)'
-    }
-
-    setFormErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      setFormErrors(prev => ({ ...prev, general: 'Please complete all required fields' }))
-      return
-    }
-
-    if (!clientData) return
-
-    setIsSubmitting(true)
-
+  const handleUpdate = async (data: ClientInput) => {
+    setSaving(true)
     try {
-      const updateData: Partial<ClientData> = {
-        full_name: formData.full_name,
-        preferred_name: formData.preferred_name || undefined,
-        approximate_age: formData.approximate_age ? parseInt(formData.approximate_age) : undefined,
-        gender_identity: formData.gender_identity || undefined,
-        gender_identity_other: formData.gender_identity === 'other' ? formData.gender_identity_other || undefined : undefined,
-        pronouns: formData.pronouns || undefined,
-        background_summary: formData.background_summary || undefined,
-        email: formData.email || undefined,
-        phone: formData.phone || undefined,
-      }
-
-      const updatedClient = await apiClient.updateClient(clientData.id, updateData)
-      setClientData(updatedClient)
-      setUpdateSuccess(true)
-      setEditMode(false)
-      setFormErrors({})
-    } catch (error) {
-      console.error('Failed to update client:', error)
-      setFormErrors({
-        general: error instanceof Error
-          ? error.message
-          : 'Failed to update client profile. Please try again.'
-      })
+      const updated = await apiClient.updateClient(clientId, data)
+      setClient(updated)
+      setEditing(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update client')
     } finally {
-      setIsSubmitting(false)
+      setSaving(false)
     }
   }
 
-  const handleDeleteClient = async () => {
-    if (!clientData) return
-    setIsDeleting(true)
-    try {
-      await apiClient.deleteClient(clientData.id)
-      router.push('/clients')
-    } catch (err) {
-      console.error('Failed to delete client:', err)
-      setFormErrors({
-        general: err instanceof Error ? err.message : 'Failed to delete client. Please try again.'
-      })
-      setShowDeleteConfirm(false)
-    } finally {
-      setIsDeleting(false)
-    }
+  const handleDelete = async () => {
+    if (!confirm('Delete this client and all their sessions reference? This cannot be undone.')) return
+    await apiClient.deleteClient(clientId)
+    router.push('/clients')
   }
 
-  const handleCancelEdit = () => {
-    if (!clientData) return
+  if (loading) return <div className="p-8 text-gray-500">Loading…</div>
+  if (error && !client) return <div className="p-8 text-red-700">{error}</div>
+  if (!client) return null
 
-    setFormData({
-      full_name: clientData.full_name || '',
-      preferred_name: clientData.preferred_name || '',
-      approximate_age: clientData.approximate_age?.toString() || '',
-      gender_identity: clientData.gender_identity || '',
-      gender_identity_other: clientData.gender_identity_other || '',
-      pronouns: clientData.pronouns || '',
-      background_summary: clientData.background_summary || '',
-      email: clientData.email || '',
-      phone: clientData.phone || '',
-    })
-
-    setFormErrors({})
-    setEditMode(false)
-    setUpdateSuccess(false)
-  }
-
-  const tabs = [
-    { id: 'overview', name: 'Overview', icon: 'overview' },
-    { id: 'assessment', name: 'Assessment', icon: 'assessment' },
-    { id: 'sessions', name: 'Sessions', icon: 'sessions' },
-    { id: 'insights', name: 'AI Insights', icon: 'insights' },
-    { id: 'chat', name: 'Chat', icon: 'chat' },
-    { id: 'edit', name: 'Edit Profile', icon: 'edit' }
-  ]
-
-  const getTabIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'overview':
-        return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-        )
-      case 'assessment':
-        return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        )
-      case 'sessions':
-        return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-          </svg>
-        )
-      case 'insights':
-        return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-          </svg>
-        )
-      case 'chat':
-        return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-        )
-      case 'edit':
-        return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        )
-      default:
-        return null
-    }
-  }
-
-  const getInitials = (fullName: string) => {
-    return fullName
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    })
-  }
-
-  const formatGenderIdentity = (gi?: string, giOther?: string) => {
-    if (!gi) return null
-    if (gi === 'other' && giOther) return giOther
-    return gi.charAt(0).toUpperCase() + gi.slice(1).replace(/_/g, ' ')
-  }
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen">
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-6">
-                <Link 
-                  href="/clients"
-                  className="text-therapy-coral hover:text-therapy-coral-dark transition-colors"
-                >
-                  ← Back to Clients
-                </Link>
-                <div className="animate-pulse">
-                  <div className="h-8 bg-gray-300 rounded w-48"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-therapy-coral"></div>
-            <span className="ml-3 text-therapy-navy">Loading client data...</span>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="min-h-screen">
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-6">
-                <Link 
-                  href="/clients"
-                  className="text-therapy-coral hover:text-therapy-coral-dark transition-colors"
-                >
-                  ← Back to Clients
-                </Link>
-                <h1 className="text-3xl font-bold text-therapy-navy">Client Not Found</h1>
-              </div>
-            </div>
-          </div>
-        </div>
-        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex">
-              <svg className="w-5 h-5 text-red-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 15c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              <p className="text-red-800">{error}</p>
-            </div>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  // Client data not found
-  if (!clientData) {
-    return (
-      <div className="min-h-screen">
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-6">
-                <Link 
-                  href="/clients"
-                  className="text-therapy-coral hover:text-therapy-coral-dark transition-colors"
-                >
-                  ← Back to Clients
-                </Link>
-                <h1 className="text-3xl font-bold text-therapy-navy">Client Not Found</h1>
-              </div>
-            </div>
-          </div>
-        </div>
-        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <div className="text-center py-12">
-            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-            </svg>
-            <h3 className="text-xl font-semibold text-therapy-navy mb-2">No client data found</h3>
-            <p className="text-gray-600">The requested client data could not be loaded.</p>
-          </div>
-        </main>
-      </div>
-    )
-  }
+  const Field = ({ label, value }: { label: string; value?: React.ReactNode }) => (
+    <div>
+      <dt className="text-sm text-gray-500">{label}</dt>
+      <dd className="text-therapy-navy mt-0.5">{value || '—'}</dd>
+    </div>
+  )
 
   return (
     <div className="min-h-screen">
-      {/* Success Message */}
-      {updateSuccess && (
-        <div className="fixed top-4 right-4 z-50 bg-therapy-green bg-opacity-20 border border-therapy-green rounded-lg p-4 shadow-lg">
-          <div className="flex items-center">
-            <svg className="w-5 h-5 text-therapy-green mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-therapy-green font-medium">Client profile updated successfully!</p>
-          </div>
-        </div>
-      )}
-
-      {/* Client Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <Link 
-                href="/clients"
-                className="text-therapy-coral hover:text-therapy-coral-dark transition-colors"
-              >
-                ← Back to Clients
-              </Link>
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-therapy-coral rounded-full flex items-center justify-center">
-                  <span className="text-white text-xl font-medium">{getInitials(clientData.full_name)}</span>
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-therapy-navy">
-                    {clientData.full_name}
-                    {clientData.preferred_name && <span className="text-lg text-gray-500 font-normal ml-2">({clientData.preferred_name})</span>}
-                  </h1>
-                  <div className="flex items-center space-x-4 mt-1">
-                    <span className="text-gray-600">
-                      {[
-                        clientData.approximate_age && `${clientData.approximate_age} yrs`,
-                        formatGenderIdentity(clientData.gender_identity, clientData.gender_identity_other),
-                        clientData.pronouns,
-                      ].filter(Boolean).join(' \u00b7 ') || 'No details'}
-                    </span>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-therapy-green bg-opacity-20 text-therapy-green">
-                      Active
-                    </span>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-therapy-green bg-opacity-20 text-therapy-green">
-                      Low Risk
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => router.push(`/sessions/new?client_id=${params.id}`)}
-                className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium"
-              >
-                New Session
-              </button>
- 
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <Link href="/clients" className="text-gray-400 hover:text-therapy-navy">←</Link>
+            <h1 className="text-3xl font-bold text-therapy-navy">{client.name}</h1>
+            {client.high_risk && <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">High risk</span>}
           </div>
-
-          {/* Tab Navigation */}
-          <div className="mt-6 border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-therapy-coral text-therapy-coral'
-                      : 'border-transparent text-gray-500 hover:text-therapy-navy hover:border-gray-300'
-                  }`}
-                >
-                  {getTabIcon(tab.icon)}
-                  <span>{tab.name}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
+          {!editing && (
+            <div className="flex gap-2">
+              <button onClick={() => setEditing(true)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">Edit</button>
+              <button onClick={handleDelete} className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium">Delete</button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Tab Content */}
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Personal Information */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Personal Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Full Name</label>
-                    <p className="text-therapy-navy">{clientData.full_name}</p>
-                  </div>
-                  {clientData.preferred_name && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Preferred Name</label>
-                      <p className="text-therapy-navy">{clientData.preferred_name}</p>
-                    </div>
-                  )}
-                  {clientData.approximate_age != null && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Age</label>
-                      <p className="text-therapy-navy">{clientData.approximate_age} years</p>
-                    </div>
-                  )}
-                  {clientData.gender_identity && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Gender Identity</label>
-                      <p className="text-therapy-navy">{formatGenderIdentity(clientData.gender_identity, clientData.gender_identity_other)}</p>
-                    </div>
-                  )}
-                  {clientData.pronouns && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Pronouns</label>
-                      <p className="text-therapy-navy">{clientData.pronouns}</p>
-                    </div>
-                  )}
-                  {clientData.email && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Email</label>
-                      <p className="text-therapy-navy">{clientData.email}</p>
-                    </div>
-                  )}
-                  {clientData.phone && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Phone</label>
-                      <p className="text-therapy-navy">{clientData.phone}</p>
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Client ID</label>
-                    <p className="text-therapy-navy">#{clientData.id}</p>
-                  </div>
-                </div>
-              </div>
+      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+        {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">{error}</div>}
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Background Information</h3>
-                <div className="prose max-w-none">
-                  {clientData.background_summary ? (
-                    <p className="text-therapy-navy leading-relaxed whitespace-pre-wrap">{clientData.background_summary}</p>
-                  ) : (
-                    <p className="text-gray-400 italic">No background information available</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Summary Stats */}
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-therapy-navy mb-4">Client Details</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Created Date</span>
-                    <span className="text-therapy-navy font-medium">{formatDate(clientData.created_at)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Last Updated</span>
-                    <span className="text-therapy-navy font-medium">{formatDate(clientData.updated_at ?? '')}</span>
-                  </div>
-                
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Status</span>
-                    <span className="text-therapy-navy font-medium">Active</span>
-                  </div>
-                </div>
-              </div>
-
-            
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'assessment' && (
-          <div>
-            {assessmentLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-therapy-coral"></div>
-                <span className="ml-3 text-therapy-navy">Loading assessment...</span>
-              </div>
-            ) : assessmentError ? (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800">{assessmentError}</p>
-              </div>
-            ) : !assessment ? (
-              <div className="text-center py-12">
-                <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <h3 className="text-lg font-semibold text-therapy-navy mb-2">No Assessment Found</h3>
-                <p className="text-gray-600">No clinical assessment has been created for this client yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Assessment Header */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-therapy-navy">
-                      Clinical Assessment
-                    </h3>
-                    <div className="flex items-center space-x-3">
-                      {assessment.is_current && (
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-therapy-green bg-opacity-20 text-therapy-green">
-                          Current
-                        </span>
-                      )}
-                      {assessment.version && (
-                        <span className="text-sm text-gray-500">Version {assessment.version}</span>
-                      )}
-                    </div>
-                  </div>
-                  {assessment.created_at && (
-                    <p className="text-sm text-gray-500">Created {formatDate(assessment.created_at)}</p>
-                  )}
-                </div>
-
-                {/* Clinical Content Sections */}
-                {[
-                  { label: 'Identification Summary', value: assessment.identification_summary },
-                  { label: 'Presenting Problem', value: assessment.presenting_problem },
-                  { label: 'Psychiatric History', value: assessment.psychiatric_history },
-                  { label: 'Trauma History', value: assessment.trauma_history },
-                  { label: 'Family Psychiatric History', value: assessment.family_psychiatric_history },
-                  { label: 'Medical History', value: assessment.medical_history },
-                  { label: 'Current Medications', value: assessment.current_medications },
-                  { label: 'Substance Use', value: assessment.substance_use },
-                  { label: 'Family History', value: assessment.family_history },
-                  { label: 'Social History', value: assessment.social_history },
-                  { label: 'Spiritual & Cultural Factors', value: assessment.spiritual_cultural_factors },
-                  { label: 'Developmental History', value: assessment.developmental_history },
-                  { label: 'Educational & Vocational History', value: assessment.educational_vocational_history },
-                  { label: 'Legal History', value: assessment.legal_history },
-                  { label: 'Diagnosis Impressions', value: assessment.diagnosis_impressions },
-                  { label: 'Risk Summary', value: assessment.risk_summary },
-                  { label: 'Treatment Goals', value: assessment.treatment_goals },
-                ].filter(section => section.value).map((section) => (
-                  <div key={section.label} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h4 className="text-sm font-semibold text-therapy-navy uppercase tracking-wide mb-3">{section.label}</h4>
-                    <p className="text-therapy-navy leading-relaxed whitespace-pre-wrap">{section.value}</p>
-                  </div>
-                ))}
-
-                {/* SNAP Assessment */}
-                {(assessment.snap_strengths || assessment.snap_needs || assessment.snap_abilities || assessment.snap_preferences) && (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h4 className="text-sm font-semibold text-therapy-navy uppercase tracking-wide mb-4">SNAP Assessment</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {assessment.snap_strengths && (
-                        <div>
-                          <h5 className="text-sm font-medium text-therapy-coral mb-2">Strengths</h5>
-                          <p className="text-therapy-navy text-sm leading-relaxed whitespace-pre-wrap">{assessment.snap_strengths}</p>
-                        </div>
-                      )}
-                      {assessment.snap_needs && (
-                        <div>
-                          <h5 className="text-sm font-medium text-therapy-coral mb-2">Needs</h5>
-                          <p className="text-therapy-navy text-sm leading-relaxed whitespace-pre-wrap">{assessment.snap_needs}</p>
-                        </div>
-                      )}
-                      {assessment.snap_abilities && (
-                        <div>
-                          <h5 className="text-sm font-medium text-therapy-coral mb-2">Abilities</h5>
-                          <p className="text-therapy-navy text-sm leading-relaxed whitespace-pre-wrap">{assessment.snap_abilities}</p>
-                        </div>
-                      )}
-                      {assessment.snap_preferences && (
-                        <div>
-                          <h5 className="text-sm font-medium text-therapy-coral mb-2">Preferences</h5>
-                          <p className="text-therapy-navy text-sm leading-relaxed whitespace-pre-wrap">{assessment.snap_preferences}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+        {editing ? (
+          <ClientForm initial={client} submitting={saving} submitLabel="Save Changes" onSubmit={handleUpdate} onCancel={() => setEditing(false)} />
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-2xl">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <Field label="Pronouns" value={client.pronouns} />
+              <Field label="Date of birth" value={client.date_of_birth} />
+              <Field label="Type" value={clientTypeLabel(client.client_type)} />
+              <Field label="High risk" value={client.high_risk ? 'Yes' : 'No'} />
+              <Field label="Primary diagnosis" value={client.primary_diagnosis} />
+              <Field label="Other diagnoses" value={client.other_diagnoses?.length ? client.other_diagnoses.join(', ') : undefined} />
+            </dl>
+            {client.extra_info && (
+              <div className="mt-5">
+                <dt className="text-sm text-gray-500">Extra info</dt>
+                <dd className="text-therapy-navy mt-0.5 whitespace-pre-wrap">{client.extra_info}</dd>
               </div>
             )}
           </div>
         )}
 
-        {activeTab === 'sessions' && (
-          <div>
-            {sessionsLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-therapy-coral"></div>
-                <span className="ml-3 text-therapy-navy">Loading sessions...</span>
-              </div>
-            ) : sessionsError ? (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800">{sessionsError}</p>
-              </div>
-            ) : sessions.length === 0 ? (
-              <div className="text-center py-12">
-                <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                <h3 className="text-lg font-semibold text-therapy-navy mb-2">No Sessions Yet</h3>
-                <p className="text-gray-600 mb-4">This client hasn't had any therapy sessions yet.</p>
-                <button
-                  onClick={() => router.push(`/sessions/new?client_id=${params.id}`)}
-                  className="px-6 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium"
-                >
-                  Schedule First Session
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {sessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => router.push(`/sessions/${session.id}`)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center space-x-3 mb-1">
-                          <h4 className="text-base font-semibold text-therapy-navy">
-                            {new Date(session.session_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                          </h4>
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-therapy-coral bg-opacity-10 text-therapy-coral capitalize">
-                            {session.session_type}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-500">{session.duration_minutes} minutes</p>
-                        {session.summary && (
-                          <p className="mt-2 text-sm text-gray-700 line-clamp-2">{session.summary}</p>
-                        )}
-                      </div>
-                      <svg className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* Sessions */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-therapy-navy">Sessions</h2>
+            <Link href={`/sessions/new?client_id=${clientId}`} className="px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 font-medium">
+              + New Session
+            </Link>
           </div>
-        )}
-
-        {activeTab === 'insights' && (
-          <div className="text-center py-12">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-            <h3 className="text-lg font-semibold text-therapy-navy mb-2">AI Insights Coming Soon</h3>
-            <p className="text-gray-600 mb-4">AI-powered insights and analysis will be available once session data is recorded.</p>
-            <button className="px-6 py-3 bg-therapy-blue text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium">
-              Learn More
-            </button>
-          </div>
-        )}
-
-        {activeTab === 'chat' && (
-          <ClientChat clientId={params.id} />
-        )}
-
-        {activeTab === 'edit' && (
-          <div className="max-w-4xl mx-auto">
-            {/* Error Banner */}
-            {formErrors.general && (
-              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex">
-                  <svg className="w-5 h-5 text-red-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 15c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <p className="text-red-800">{formErrors.general}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-8">
-              {/* Personal Information Panel */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-therapy-navy">Edit Client Information</h2>
-                  <div className="flex items-center space-x-3">
-                    {!editMode && (
-                      <button
-                        onClick={() => setEditMode(true)}
-                        className="px-4 py-2 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium flex items-center space-x-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        <span>Edit</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="space-y-6">
-                  {/* Full Name */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="fullName" className="block text-sm font-medium text-therapy-navy mb-2">
-                        Client Name <span className="text-red-500">*</span>
-                      </label>
-                      {editMode ? (
-                        <input
-                          type="text"
-                          id="fullName"
-                          value={formData.full_name}
-                          onChange={(e) => handleInputChange('full_name', e.target.value)}
-                          placeholder="e.g. Jordan Smith"
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${
-                            formErrors.full_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                          }`}
-                        />
-                      ) : (
-                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.full_name}</p>
-                      )}
-                      {formErrors.full_name && <p className="mt-1 text-sm text-red-600">{formErrors.full_name}</p>}
-                    </div>
-                    <div>
-                      <label htmlFor="preferredName" className="block text-sm font-medium text-therapy-navy mb-2">Preferred Name</label>
-                      {editMode ? (
-                        <input type="text" id="preferredName" value={formData.preferred_name} onChange={(e) => handleInputChange('preferred_name', e.target.value)} placeholder="e.g. Jo" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors" />
-                      ) : (
-                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.preferred_name || '-'}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="age" className="block text-sm font-medium text-therapy-navy mb-2">Approximate Age</label>
-                      {editMode ? (
-                        <input type="number" id="age" min="0" max="120" value={formData.approximate_age} onChange={(e) => handleInputChange('approximate_age', e.target.value)} placeholder="25" className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors ${formErrors.approximate_age ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
-                      ) : (
-                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.approximate_age != null ? `${clientData.approximate_age} years` : '-'}</p>
-                      )}
-                      {formErrors.approximate_age && <p className="mt-1 text-sm text-red-600">{formErrors.approximate_age}</p>}
-                    </div>
-                    <div>
-                      <label htmlFor="pronouns" className="block text-sm font-medium text-therapy-navy mb-2">Pronouns</label>
-                      {editMode ? (
-                        <input type="text" id="pronouns" value={formData.pronouns} onChange={(e) => handleInputChange('pronouns', e.target.value)} placeholder="e.g. she/her, he/him, they/them" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors" />
-                      ) : (
-                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.pronouns || '-'}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="genderIdentity" className="block text-sm font-medium text-therapy-navy mb-2">Gender Identity</label>
-                      {editMode ? (
-                        <input type="text" id="genderIdentity" value={formData.gender_identity} onChange={(e) => handleInputChange('gender_identity', e.target.value)} placeholder="e.g. woman, man, non-binary" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors" />
-                      ) : (
-                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{formatGenderIdentity(clientData.gender_identity, clientData.gender_identity_other) || '-'}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-therapy-navy mb-2">Email</label>
-                      {editMode ? (
-                        <input type="email" id="email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} placeholder="client@example.com" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors" />
-                      ) : (
-                        <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.email || '-'}</p>
-                      )}
-                    </div>
-                  </div>
-
+          {sessions.length === 0 ? (
+            <p className="text-gray-500">No sessions yet.</p>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 divide-y">
+              {sessions.map(s => (
+                <Link key={s.id} href={`/sessions/${s.id}`} className="flex items-center justify-between px-5 py-4 hover:bg-gray-50">
                   <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-therapy-navy mb-2">Phone</label>
-                    {editMode ? (
-                      <input type="tel" id="phone" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} placeholder="+1 (555) 000-0000" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors md:w-1/2" />
-                    ) : (
-                      <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy">{clientData.phone || '-'}</p>
-                    )}
+                    <p className="font-medium text-therapy-navy">{new Date(s.session_date).toLocaleDateString()}</p>
+                    <p className="text-sm text-gray-500 truncate max-w-md">{s.summary || 'No summary'}</p>
                   </div>
-
-                  <div>
-                    <label htmlFor="background" className="block text-sm font-medium text-therapy-navy mb-2">Background Summary</label>
-                    {editMode ? (
-                      <textarea id="background" rows={6} value={formData.background_summary} onChange={(e) => handleInputChange('background_summary', e.target.value)} placeholder="Client background, presenting concerns, history..." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-therapy-coral focus:border-transparent transition-colors resize-none" />
-                    ) : (
-                      <p className="px-4 py-3 bg-gray-50 rounded-lg text-therapy-navy whitespace-pre-wrap">{clientData.background_summary || '-'}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              {editMode && (
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={handleCancelEdit}
-                    className="text-gray-600 hover:text-therapy-navy transition-colors"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting || Object.keys(formErrors).length > 0}
-                    className="px-8 py-3 bg-therapy-coral text-white rounded-lg hover:bg-opacity-90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Updating...</span>
-                      </>
-                    ) : (
-                      <span>Save Changes</span>
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {/* Delete Client */}
-              <div className="mt-12 pt-8 border-t border-red-200">
-                <h3 className="text-lg font-semibold text-red-600 mb-2">Danger Zone</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Permanently delete this client and all associated data. This action cannot be undone.
-                </p>
-                {!showDeleteConfirm ? (
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="px-6 py-2.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium"
-                  >
-                    Delete Client
-                  </button>
-                ) : (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700 font-medium mb-3">
-                      Are you sure you want to delete {clientData?.full_name || 'this client'}? This will permanently remove their profile, sessions, and all related records.
-                    </p>
-                    <div className="flex items-center space-x-3">
-                      <button
-                        onClick={handleDeleteClient}
-                        disabled={isDeleting}
-                        className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                      >
-                        {isDeleting ? (
-                          <>
-                            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Deleting...</span>
-                          </>
-                        ) : (
-                          <span>Yes, Delete</span>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setShowDeleteConfirm(false)}
-                        disabled={isDeleting}
-                        className="px-6 py-2.5 text-gray-600 hover:text-therapy-navy transition-colors font-medium"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  <span className="text-xs font-medium text-gray-400">{formatLabel(s.note_format)}</span>
+                </Link>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+        </section>
       </main>
     </div>
   )
-} 
+}

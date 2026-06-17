@@ -1,64 +1,17 @@
 """
-Main API Router - v1
+Main API Router - v1 (new minimal schema)
 """
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     clients,
     sessions,
-    session_notes,
-    clinical_assessments,
-    transcription,
-    ai,
-    waitlist,
+    templates,
+    user_settings,
 )
 
 api_router = APIRouter()
 
-# Client endpoints
-api_router.include_router(
-    clients.router,
-    prefix="/clients",
-    tags=["clients"]
-)
-
-# Session endpoints
-api_router.include_router(
-    sessions.router,
-    prefix="/sessions",
-    tags=["sessions"]
-)
-
-# Session Notes endpoints
-api_router.include_router(
-    session_notes.router,
-    prefix="/session-notes",
-    tags=["session-notes"]
-)
-
-# Clinical Assessment endpoints
-api_router.include_router(
-    clinical_assessments.router,
-    prefix="/clinical-assessments",
-    tags=["clinical-assessments"]
-)
-
-# Transcription endpoints
-api_router.include_router(
-    transcription.router,
-    prefix="/transcription",
-    tags=["transcription"]
-)
-
-# AI Services endpoints
-api_router.include_router(
-    ai.router,
-    prefix="/ai",
-    tags=["ai"]
-)
-
-# Public waitlist endpoint
-api_router.include_router(
-    waitlist.router,
-    prefix="/waitlist",
-    tags=["waitlist"]
-)
+api_router.include_router(clients.router, prefix="/clients", tags=["clients"])
+api_router.include_router(sessions.router, prefix="/sessions", tags=["sessions"])
+api_router.include_router(templates.router, prefix="/templates", tags=["templates"])
+api_router.include_router(user_settings.router, prefix="/settings", tags=["settings"])

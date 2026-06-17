@@ -4,7 +4,7 @@ import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata: Metadata = {
   title: 'TheraBee',
-  description: 'Confidential AI workflow support for therapists.',
+  description: 'Private clinical workflow support for therapists.',
 }
 
 export default function RootLayout({
