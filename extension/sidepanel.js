@@ -10,7 +10,8 @@
 const CONFIG = {
   APPWRITE_ENDPOINT: 'https://sfo.cloud.appwrite.io/v1',
   APPWRITE_PROJECT_ID: '6a32c57f003397a90bca',
-  BACKEND_URL: 'http://localhost:8000',
+  // BACKEND_URL: 'http://localhost:8000',
+  BACKEND_URL: 'https://therapisthelper-backend.onrender.com',
 };
 
 const EHR_URLS = {
