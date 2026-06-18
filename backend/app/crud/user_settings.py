@@ -34,6 +34,7 @@ class UserSettingsCRUD:
                 "therapist_id": therapist_id,
                 "default_ehr": None,
                 "last_used_ehr": None,
+                "default_note_template": None,
                 "created_at": now,
                 "updated_at": now,
             }

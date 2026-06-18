@@ -79,12 +79,12 @@ export default function LoginPage() {
           <Image
             src={therabeeLogo}
             alt="TheraBee logo"
-            width={48}
-            height={48}
-            className="w-12 h-12 mr-3"
+            width={72}
+            height={72}
+            className="w-[72px] h-[72px] mr-3"
             priority
           />
-          <span className="text-2xl font-bold text-therapy-navy">TheraBee</span>
+          <span className="text-3xl font-bold text-therapy-navy">TheraBee</span>
         </div>
 
         {/* Tabs */}

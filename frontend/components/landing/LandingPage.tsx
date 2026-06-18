@@ -53,7 +53,7 @@ const workflowPoints = [
 
 function BeeMark() {
   return (
-    <Image src={therabeeLogo} alt="TheraBee logo" width={44} height={44} className="h-11 w-11 rounded-full" priority />
+    <Image src={therabeeLogo} alt="TheraBee logo" width={64} height={64} className="h-16 w-16 rounded-full" priority />
   )
 }
 

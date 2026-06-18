@@ -57,15 +57,25 @@ export interface NoteTemplate {
   therapist_id?: string
   name: string
   base_format?: string
+  description?: string
   sections: string[]
+  section_settings?: NoteTemplateSectionSetting[]
   created_at?: string
   updated_at?: string
+}
+
+export interface NoteTemplateSectionSetting {
+  title: string
+  format?: string
+  example?: string
 }
 
 export type NoteTemplateInput = {
   name: string
   base_format?: string
+  description?: string
   sections: string[]
+  section_settings?: NoteTemplateSectionSetting[]
 }
 
 export interface UserSettings {
@@ -73,6 +83,7 @@ export interface UserSettings {
   therapist_id: string
   default_ehr?: string | null
   last_used_ehr?: string | null
+  default_note_template?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -193,7 +204,7 @@ class ApiClient {
   getUserSettings(): Promise<UserSettings> {
     return this.request<UserSettings>('/api/v1/settings/')
   }
-  updateUserSettings(data: { default_ehr?: string; last_used_ehr?: string }): Promise<UserSettings> {
+  updateUserSettings(data: { default_ehr?: string; last_used_ehr?: string; default_note_template?: string }): Promise<UserSettings> {
     return this.request<UserSettings>('/api/v1/settings/', { method: 'PUT', body: JSON.stringify(data) })
   }
 

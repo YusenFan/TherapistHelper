@@ -15,6 +15,7 @@ from .models import (
     SessionUpdate,
     SessionResponse,
     # Note Template
+    NoteTemplateSectionSetting,
     NoteTemplateCreate,
     NoteTemplateUpdate,
     NoteTemplateResponse,
@@ -33,6 +34,7 @@ __all__ = [
     "SessionCreate",
     "SessionUpdate",
     "SessionResponse",
+    "NoteTemplateSectionSetting",
     "NoteTemplateCreate",
     "NoteTemplateUpdate",
     "NoteTemplateResponse",

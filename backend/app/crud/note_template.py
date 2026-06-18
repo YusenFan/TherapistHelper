@@ -17,7 +17,11 @@ from appwrite.query import Query
 def _to_appwrite(data: Dict[str, Any]) -> Dict[str, Any]:
     result = {}
     for k, v in data.items():
-        if k == "sections" and isinstance(v, list):
+        if k in {"sections", "section_settings"} and isinstance(v, list):
+            v = [
+                item.model_dump(exclude_none=True) if hasattr(item, "model_dump") else item
+                for item in v
+            ]
             v = json.dumps(v)
         result[k] = v
     return result

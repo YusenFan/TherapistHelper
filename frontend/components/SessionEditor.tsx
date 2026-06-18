@@ -16,19 +16,6 @@ interface Props {
   onDelete?: () => void
 }
 
-const LANGUAGES: { value: string; label: string }[] = [
-  { value: 'multi', label: 'Auto-detect (mixed OK)' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'fr', label: 'French' },
-  { value: 'de', label: 'German' },
-  { value: 'zh', label: 'Chinese' },
-  { value: 'ja', label: 'Japanese' },
-  { value: 'ko', label: 'Korean' },
-  { value: 'pt', label: 'Portuguese' },
-  { value: 'hi', label: 'Hindi' },
-]
-
 function resolveFormat(formatKey: string | undefined, templates: NoteTemplate[]):
   { format: string; sections: string[]; templateId?: string; label: string } {
   if (!formatKey) return { format: '', sections: [], label: 'Progress note' }
@@ -79,7 +66,6 @@ export default function SessionEditor({
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [language, setLanguage] = useState('multi')
   const [recording, setRecording] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [interim, setInterim] = useState('')
@@ -156,24 +142,6 @@ export default function SessionEditor({
 
       let partial = ''
       dc.onopen = () => {
-        // Override language only when the user picked something specific.
-        // 'multi' / Auto-detect → omit language so the model handles mixed
-        // Chinese + English audio without forcing a single language.
-        if (language && language !== 'multi') {
-          try {
-            dc.send(JSON.stringify({
-              type: 'session.update',
-              session: {
-                type: 'transcription',
-                audio: {
-                  input: {
-                    transcription: { language },
-                  },
-                },
-              },
-            }))
-          } catch {}
-        }
         // gpt-realtime-whisper has no server VAD — commit the input buffer on
         // a timer so transcription items finalize and the next chunk starts.
         commitTimerRef.current = setInterval(() => {
@@ -392,9 +360,9 @@ export default function SessionEditor({
               </p>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="relative border border-gray-200 rounded-xl overflow-hidden">
               <textarea
-                className="w-full px-4 py-3 text-sm focus:outline-none resize-none min-h-[280px]"
+                className="w-full px-4 py-3 pb-16 text-sm focus:outline-none resize-none min-h-[320px]"
                 value={summary}
                 onChange={e => setSummary(e.target.value)}
                 placeholder={'Remember to include:\n\n• Presented issues and topics\n• Client presentations\n• Therapeutic interventions\n• Assessment and plan\n• Overall therapy progress'}
@@ -404,44 +372,35 @@ export default function SessionEditor({
                   {interim}…
                 </div>
               )}
-              <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 bg-gray-50">
-                <span className={`text-xs px-2 py-1 rounded-full ${wordCount === 0 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
-                  {wordCount} words
-                </span>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={language}
-                    onChange={e => setLanguage(e.target.value)}
-                    disabled={recording || connecting}
-                    className="text-xs px-2 py-1 border border-gray-200 rounded-md bg-white"
-                  >
-                    {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                  </select>
-                  {!recording ? (
-                    <button
-                      type="button"
-                      onClick={startRecording}
-                      disabled={connecting}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-white text-therapy-navy disabled:opacity-50"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                      </svg>
-                      {connecting ? 'Connecting…' : 'Dictate'}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={stopRecording}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                    >
-                      <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                      Stop
-                    </button>
-                  )}
-                </div>
-              </div>
+              <span className={`absolute bottom-3 left-3 text-xs px-2 py-1 rounded-full pointer-events-none ${wordCount === 0 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                {wordCount} words
+              </span>
+              {!recording ? (
+                <button
+                  type="button"
+                  onClick={startRecording}
+                  disabled={connecting}
+                  className="absolute bottom-3 right-3 flex items-center gap-1.5 text-sm px-4 py-2 bg-white border border-gray-300 rounded-full shadow-md hover:shadow-lg hover:bg-gray-50 text-therapy-navy disabled:opacity-50 transition-shadow"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                  {connecting ? 'Connecting…' : 'Dictate'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={stopRecording}
+                  className="absolute bottom-3 right-3 flex items-center gap-1.5 text-sm px-4 py-2 bg-red-600 text-white rounded-full shadow-md hover:shadow-lg hover:bg-red-700 transition-shadow"
+                >
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  Stop
+                </button>
+              )}
             </div>
+            <p className="text-xs text-gray-500 italic -mt-2">
+              Supports multiple languages — mix freely (e.g. English + Chinese)
+            </p>
 
             <button
               type="button"

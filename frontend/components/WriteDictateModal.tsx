@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { apiClient, type Client, type NoteTemplate } from '@/lib/api'
 import { NOTE_FORMATS } from '@/lib/noteFormats'
+import { FALLBACK_DEFAULT_NOTE_TEMPLATE } from '@/lib/templatePreferences'
 
 interface Props {
   open: boolean
@@ -25,6 +26,14 @@ export default function WriteDictateModal({ open, onClose, onContinue }: Props) 
 
   useEffect(() => {
     if (!open) return
+    apiClient.getUserSettings()
+      .then((settings) => {
+        const preferred = settings.default_note_template && settings.default_note_template !== 'upheal'
+          ? settings.default_note_template
+          : FALLBACK_DEFAULT_NOTE_TEMPLATE
+        setTemplate((current) => current || preferred)
+      })
+      .catch(() => setTemplate((current) => current || FALLBACK_DEFAULT_NOTE_TEMPLATE))
     apiClient.getClients().then(setClients).catch(() => {})
     apiClient.getTemplates().then(setTemplates).catch(() => {})
   }, [open])

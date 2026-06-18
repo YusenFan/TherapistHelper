@@ -6,12 +6,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import SessionEditor from '@/components/SessionEditor'
 import SyncEHRModal from '@/components/SyncEHRModal'
 import { apiClient, type Client, type Session } from '@/lib/api'
+import { FALLBACK_DEFAULT_NOTE_TEMPLATE } from '@/lib/templatePreferences'
 
 function NewSessionInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const clientId = searchParams.get('client_id') || undefined
-  const template = searchParams.get('template') || undefined
+  const templateParam = searchParams.get('template') || undefined
   const date = searchParams.get('date') || undefined
   const time = searchParams.get('time') || undefined
   const durationParam = searchParams.get('duration')
@@ -20,6 +21,7 @@ function NewSessionInner() {
   const [client, setClient] = useState<Client | null>(null)
   const [savedSession, setSavedSession] = useState<Session | null>(null)
   const [defaultEhr, setDefaultEhr] = useState<string | null>(null)
+  const [defaultNoteTemplate, setDefaultNoteTemplate] = useState(FALLBACK_DEFAULT_NOTE_TEMPLATE)
   const [initialSummary] = useState<string | undefined>(() => {
     if (typeof window === 'undefined') return undefined
     try {
@@ -39,8 +41,17 @@ function NewSessionInner() {
 
   useEffect(() => {
     apiClient.getUserSettings()
-      .then(s => setDefaultEhr(s.default_ehr ?? 'therapynotes'))
-      .catch(() => setDefaultEhr('therapynotes'))
+      .then(s => {
+        setDefaultEhr(s.default_ehr ?? 'therapynotes')
+        const preferred = s.default_note_template && s.default_note_template !== 'upheal'
+          ? s.default_note_template
+          : FALLBACK_DEFAULT_NOTE_TEMPLATE
+        setDefaultNoteTemplate(preferred)
+      })
+      .catch(() => {
+        setDefaultEhr('therapynotes')
+        setDefaultNoteTemplate(FALLBACK_DEFAULT_NOTE_TEMPLATE)
+      })
   }, [])
 
   const handleSaved = (s: Session) => setSavedSession(s)
@@ -70,7 +81,7 @@ function NewSessionInner() {
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <SessionEditor
           fixedClientId={clientId}
-          initialFormat={template}
+          initialFormat={templateParam || defaultNoteTemplate}
           initialDate={date}
           initialTime={time}
           initialDuration={duration}

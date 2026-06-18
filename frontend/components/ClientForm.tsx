@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { type ClientInput, type Client } from '@/lib/api'
 import { CLIENT_TYPES } from '@/lib/noteFormats'
 
+const PRONOUN_OPTIONS = ['HE', 'SHE', 'THEY']
+
 interface Props {
   initial?: Client
   submitting?: boolean
@@ -45,7 +47,12 @@ export default function ClientForm({ initial, submitting, submitLabel = 'Save', 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={label}>Pronouns</label>
-          <input className={input} value={pronouns} onChange={e => setPronouns(e.target.value)} placeholder="she/her" />
+          <select className={input} value={pronouns} onChange={e => setPronouns(e.target.value)}>
+            <option value="">Select pronouns</option>
+            {PRONOUN_OPTIONS.map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className={label}>Date of birth</label>

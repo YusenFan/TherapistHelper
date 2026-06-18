@@ -186,10 +186,12 @@ def main():
     add_string("note_templates", "therapist_id", 64, required=True)
     add_string("note_templates", "name", 100, required=True)
     add_string("note_templates", "base_format", 20)
+    add_string("note_templates", "description", 8000, encrypt=True)
     add_string("note_templates", "sections", 6000, required=True)
+    add_string("note_templates", "section_settings", 50000, encrypt=True)
     add_string("note_templates", "created_at", 40)
     add_string("note_templates", "updated_at", 40)
-    wait_available("note_templates", ["therapist_id"])
+    wait_available("note_templates", ["therapist_id", "description", "section_settings"])
     add_index("note_templates", "idx_therapist", "therapist_id")
 
     # ---- user_settings ----
@@ -197,9 +199,10 @@ def main():
     add_string("user_settings", "therapist_id", 64, required=True)
     add_string("user_settings", "default_ehr", 40)
     add_string("user_settings", "last_used_ehr", 40)
+    add_string("user_settings", "default_note_template", 80)
     add_string("user_settings", "created_at", 40)
     add_string("user_settings", "updated_at", 40)
-    wait_available("user_settings", ["therapist_id"])
+    wait_available("user_settings", ["therapist_id", "default_note_template"])
     add_index("user_settings", "idx_therapist", "therapist_id", index_type="unique")
 
     print("\n✨ Done. Database is ready.")

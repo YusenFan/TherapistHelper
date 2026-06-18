@@ -10,8 +10,26 @@ export interface NoteFormatDef {
 export const NOTE_FORMATS: NoteFormatDef[] = [
   { key: 'soap', label: 'SOAP', sections: ['Subjective', 'Objective', 'Assessment', 'Plan'] },
   { key: 'dap', label: 'DAP', sections: ['Data', 'Assessment', 'Plan'] },
-  { key: 'girp', label: 'GIRP', sections: ['Goal', 'Intervention', 'Response', 'Plan'] },
   { key: 'birp', label: 'BIRP', sections: ['Behavior', 'Intervention', 'Response', 'Plan'] },
+  { key: 'girp', label: 'GIRP', sections: ['Goal', 'Intervention', 'Response', 'Plan'] },
+  {
+    key: 'upheal',
+    label: 'Upheal',
+    sections: ['Session Focus', 'Client Presentation', 'Interventions', 'Progress', 'Plan'],
+  },
+  {
+    key: 'mse_intake',
+    label: 'Mental Status Exam',
+    sections: [
+      'Appearance', 'Behavior', 'Speech', 'Mood', 'Affect', 'Thought Process',
+      'Thought Content', 'Perception', 'Cognition', 'Insight & Judgment',
+    ],
+  },
+  {
+    key: 'enhanced_soap',
+    label: 'Enhanced SOAP',
+    sections: ['Subjective', 'Objective', 'Mental Status Exam', 'Assessment', 'Interventions', 'Plan'],
+  },
   { key: 'pirp', label: 'PIRP', sections: ['Problem', 'Intervention', 'Response', 'Plan'] },
   { key: 'sirp', label: 'SIRP', sections: ['Situation', 'Intervention', 'Response', 'Plan'] },
   { key: 'pie', label: 'PIE', sections: ['Problem', 'Intervention', 'Evaluation'] },
@@ -21,14 +39,6 @@ export const NOTE_FORMATS: NoteFormatDef[] = [
     sections: [
       'Target Memory', 'Negative Cognition', 'Positive Cognition', 'SUDs/VOC',
       'Desensitization', 'Installation', 'Body Scan', 'Closure',
-    ],
-  },
-  {
-    key: 'mse_intake',
-    label: 'MSE Intake',
-    sections: [
-      'Appearance', 'Behavior', 'Speech', 'Mood', 'Affect', 'Thought Process',
-      'Thought Content', 'Perception', 'Cognition', 'Insight & Judgment',
     ],
   },
 ]

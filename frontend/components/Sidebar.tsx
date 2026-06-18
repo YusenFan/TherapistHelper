@@ -103,9 +103,9 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
               <Image
                 src={therabeeLogo}
                 alt="TheraBee logo"
-                width={32}
-                height={32}
-                className="w-8 h-8 mr-3"
+                width={48}
+                height={48}
+                className="w-12 h-12 mr-3"
                 priority
               />
               {!isCollapsed && (

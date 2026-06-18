@@ -157,16 +157,27 @@ class SessionResponse(BaseModel):
 # Note Template
 # ============================================================================
 
+class NoteTemplateSectionSetting(BaseModel):
+    title: str = Field(..., min_length=1, max_length=100)
+    format: Optional[str] = Field(None, max_length=20)
+    example: Optional[str] = Field(None, max_length=8000)
+    length: Optional[str] = Field(None, max_length=20)
+
+
 class NoteTemplateCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     base_format: Optional[str] = Field(None, max_length=20)
+    description: Optional[str] = Field(None, max_length=8000)
     sections: List[str] = Field(..., min_length=1)
+    section_settings: List[NoteTemplateSectionSetting] = Field(default_factory=list)
 
 
 class NoteTemplateUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     base_format: Optional[str] = Field(None, max_length=20)
+    description: Optional[str] = Field(None, max_length=8000)
     sections: Optional[List[str]] = None
+    section_settings: Optional[List[NoteTemplateSectionSetting]] = None
 
 
 class NoteTemplateResponse(BaseModel):
@@ -174,13 +185,28 @@ class NoteTemplateResponse(BaseModel):
     therapist_id: Optional[str] = None
     name: str
     base_format: Optional[str] = None
+    description: Optional[str] = None
     sections: List[str] = []
+    section_settings: List[NoteTemplateSectionSetting] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     @field_validator("sections", mode="before")
     @classmethod
     def parse_sections(cls, v):
+        if isinstance(v, str):
+            if not v:
+                return []
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else []
+            except Exception:
+                return []
+        return v or []
+
+    @field_validator("section_settings", mode="before")
+    @classmethod
+    def parse_section_settings(cls, v):
         if isinstance(v, str):
             if not v:
                 return []
@@ -202,6 +228,7 @@ class NoteTemplateResponse(BaseModel):
 class UserSettingsUpdate(BaseModel):
     default_ehr: Optional[EHRPlatform] = None
     last_used_ehr: Optional[EHRPlatform] = None
+    default_note_template: Optional[str] = Field(None, max_length=80)
 
 
 class UserSettingsResponse(BaseModel):
@@ -209,6 +236,7 @@ class UserSettingsResponse(BaseModel):
     therapist_id: str
     default_ehr: Optional[str] = None
     last_used_ehr: Optional[str] = None
+    default_note_template: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
