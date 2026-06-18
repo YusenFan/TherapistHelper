@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import GoogleCalendar from '@/components/GoogleCalendar'
+import GoogleCalendar, { type CalendarSessionPreset } from '@/components/GoogleCalendar'
 import WriteDictateModal from '@/components/WriteDictateModal'
 import UploadAudioModal from '@/components/UploadAudioModal'
 
@@ -10,19 +10,28 @@ export default function DashboardPage() {
   const router = useRouter()
   const [modalOpen, setModalOpen] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [calendarPreset, setCalendarPreset] = useState<CalendarSessionPreset | null>(null)
 
-  const handleWriteDictate = () => setModalOpen(true)
+  const handleWriteDictate = () => {
+    setCalendarPreset(null)
+    setModalOpen(true)
+  }
 
   const handleContinue = (params: URLSearchParams) => {
     setModalOpen(false)
+    setCalendarPreset(null)
     const qs = params.toString()
     router.push(qs ? `/sessions/new?${qs}` : '/sessions/new')
   }
 
-  const handleUpload = () => setUploadOpen(true)
+  const handleUpload = () => {
+    setCalendarPreset(null)
+    setUploadOpen(true)
+  }
 
   const handleUploadContinue = (params: URLSearchParams, transcript: string) => {
     setUploadOpen(false)
+    setCalendarPreset(null)
     try {
       sessionStorage.setItem('pendingTranscript', transcript)
     } catch {}
@@ -30,17 +39,27 @@ export default function DashboardPage() {
     router.push(qs ? `/sessions/new?${qs}` : '/sessions/new')
   }
 
+  const paramsFromCalendarPreset = (preset: CalendarSessionPreset) => {
+    const params = new URLSearchParams()
+    if (preset.clientId) params.set('client_id', preset.clientId)
+    if (preset.template) params.set('template', preset.template)
+    if (preset.date) params.set('date', preset.date)
+    if (preset.time) params.set('time', preset.time)
+    if (preset.duration) params.set('duration', String(preset.duration))
+    return params
+  }
+
   return (
-    <div className="min-h-screen">
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="flex h-screen flex-col overflow-hidden">
+      <div className="shrink-0 bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <h1 className="text-3xl font-bold text-therapy-navy">Dashboard</h1>
           <p className="text-gray-600 mt-1">Start a new note or review your schedule.</p>
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="flex flex-col sm:flex-row gap-3">
+      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
           <button
             type="button"
             onClick={handleWriteDictate}
@@ -64,18 +83,43 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <GoogleCalendar />
+        <GoogleCalendar
+          onStartSession={(mode, preset) => {
+            if (mode === 'write') {
+              const qs = paramsFromCalendarPreset(preset).toString()
+              router.push(qs ? `/sessions/new?${qs}` : '/sessions/new')
+            } else {
+              setCalendarPreset(preset)
+              setUploadOpen(true)
+            }
+          }}
+        />
       </main>
 
       <WriteDictateModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        initialClientId={calendarPreset?.clientId}
+        initialDate={calendarPreset?.date}
+        initialTime={calendarPreset?.time}
+        initialDuration={calendarPreset?.duration}
+        onClose={() => {
+          setModalOpen(false)
+          setCalendarPreset(null)
+        }}
         onContinue={handleContinue}
       />
 
       <UploadAudioModal
         open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
+        initialClientId={calendarPreset?.clientId}
+        initialDate={calendarPreset?.date}
+        initialTime={calendarPreset?.time}
+        initialDuration={calendarPreset?.duration}
+        initialTemplate={calendarPreset?.template}
+        onClose={() => {
+          setUploadOpen(false)
+          setCalendarPreset(null)
+        }}
         onContinue={handleUploadContinue}
       />
     </div>

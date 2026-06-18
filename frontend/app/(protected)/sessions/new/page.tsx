@@ -16,7 +16,8 @@ function NewSessionInner() {
   const date = searchParams.get('date') || undefined
   const time = searchParams.get('time') || undefined
   const durationParam = searchParams.get('duration')
-  const duration = durationParam ? Number(durationParam) : undefined
+  const parsedDuration = durationParam ? Number(durationParam) : undefined
+  const duration = parsedDuration && Number.isFinite(parsedDuration) ? parsedDuration : undefined
 
   const [client, setClient] = useState<Client | null>(null)
   const [savedSession, setSavedSession] = useState<Session | null>(null)
@@ -43,10 +44,7 @@ function NewSessionInner() {
     apiClient.getUserSettings()
       .then(s => {
         setDefaultEhr(s.default_ehr ?? 'therapynotes')
-        const preferred = s.default_note_template && s.default_note_template !== 'upheal'
-          ? s.default_note_template
-          : FALLBACK_DEFAULT_NOTE_TEMPLATE
-        setDefaultNoteTemplate(preferred)
+        setDefaultNoteTemplate(s.default_note_template || FALLBACK_DEFAULT_NOTE_TEMPLATE)
       })
       .catch(() => {
         setDefaultEhr('therapynotes')

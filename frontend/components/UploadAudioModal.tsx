@@ -7,6 +7,11 @@ import { FALLBACK_DEFAULT_NOTE_TEMPLATE } from '@/lib/templatePreferences'
 
 interface Props {
   open: boolean
+  initialClientId?: string
+  initialDate?: string
+  initialTime?: string
+  initialDuration?: number
+  initialTemplate?: string
   onClose: () => void
   onContinue: (params: URLSearchParams, transcript: string) => void
 }
@@ -26,14 +31,29 @@ const LANGUAGES: { value: string; label: string }[] = [
   { value: 'hi', label: 'Hindi' },
 ]
 
-export default function UploadAudioModal({ open, onClose, onContinue }: Props) {
+function localDate(d: Date) {
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${month}-${day}`
+}
+
+export default function UploadAudioModal({
+  open,
+  initialClientId,
+  initialDate,
+  initialTime,
+  initialDuration,
+  initialTemplate,
+  onClose,
+  onContinue,
+}: Props) {
   const [clients, setClients] = useState<Client[]>([])
   const [templates, setTemplates] = useState<NoteTemplate[]>([])
 
   const now = new Date()
   const [clientId, setClientId] = useState('')
   const [template, setTemplate] = useState('')
-  const [date, setDate] = useState(now.toISOString().slice(0, 10))
+  const [date, setDate] = useState(localDate(now))
   const [time, setTime] = useState(now.toTimeString().slice(0, 5))
   const [duration, setDuration] = useState(50)
   const [language, setLanguage] = useState('multi')
@@ -47,15 +67,23 @@ export default function UploadAudioModal({ open, onClose, onContinue }: Props) {
     if (!open) return
     apiClient.getUserSettings()
       .then((settings) => {
-        const preferred = settings.default_note_template && settings.default_note_template !== 'upheal'
-          ? settings.default_note_template
-          : FALLBACK_DEFAULT_NOTE_TEMPLATE
+        const preferred = settings.default_note_template || FALLBACK_DEFAULT_NOTE_TEMPLATE
         setTemplate((current) => current || preferred)
       })
       .catch(() => setTemplate((current) => current || FALLBACK_DEFAULT_NOTE_TEMPLATE))
     apiClient.getClients().then(setClients).catch(() => {})
     apiClient.getTemplates().then(setTemplates).catch(() => {})
   }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const current = new Date()
+    setClientId(initialClientId ?? '')
+    setDate(initialDate ?? localDate(current))
+    setTime(initialTime ?? current.toTimeString().slice(0, 5))
+    setDuration(initialDuration ?? 50)
+    setTemplate(initialTemplate ?? '')
+  }, [open, initialClientId, initialDate, initialTime, initialDuration, initialTemplate])
 
   useEffect(() => {
     if (!open) {

@@ -46,7 +46,6 @@ const CATALOG_TABS: { key: CatalogTab; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'intake', label: 'Intake' },
   { key: 'progress', label: 'Progress' },
-  { key: 'client_summary', label: 'Client summary' },
   { key: 'therapy', label: 'Therapy' },
 ]
 
@@ -112,16 +111,12 @@ const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
     'Behavior, Intervention, Response, and Plan. Useful when treatment work centers on observable behavior and intervention effectiveness.',
   girp:
     'Goal, Intervention, Response, and Plan. Keeps each note aligned to a treatment goal and the client response in session.',
-  upheal:
-    'A therapy-focused progress note with session focus, client presentation, interventions, progress, and plan.',
   mse_intake:
     'A structured mental status exam template covering appearance, behavior, speech, mood, affect, thought process, cognition, insight, and judgment.',
   enhanced_soap:
     'SOAP with additional mental status and intervention detail for sessions that need more clinical structure.',
   emdr:
     'A structured EMDR progress note for target memory, cognition, desensitization, installation, body scan, and closure.',
-  client_summary:
-    'A concise client summary for care coordination, case review, or quick clinical handoff.',
 }
 
 const BUILT_IN_ORDER = ['soap', 'dap', 'birp', 'girp', 'mse_intake', 'enhanced_soap', 'emdr']
@@ -458,7 +453,7 @@ function TemplatePreview({
                 <span className="h-5 w-5 rounded-full bg-sky-400" />
                 <span className="-ml-2 h-5 w-5 rounded-full bg-therapy-honey" />
               </span>
-              <span className="font-bold text-therapy-charcoal">{item.source === 'builtin' ? 'Upheal' : 'You'}</span>
+              <span className="font-bold text-therapy-charcoal">{item.source === 'builtin' ? 'Built-in' : 'You'}</span>
             </div>
           </div>
         </aside>
@@ -856,9 +851,7 @@ export default function TemplatesPage() {
     ])
       .then(([items, settings]) => {
         setTemplates(items)
-        const nextDefault = settings?.default_note_template && settings.default_note_template !== 'upheal'
-          ? settings.default_note_template
-          : FALLBACK_DEFAULT_NOTE_TEMPLATE
+        const nextDefault = settings?.default_note_template || FALLBACK_DEFAULT_NOTE_TEMPLATE
         setDefaultTemplateState(nextDefault)
         setError(null)
       })

@@ -13,11 +13,6 @@ export const NOTE_FORMATS: NoteFormatDef[] = [
   { key: 'birp', label: 'BIRP', sections: ['Behavior', 'Intervention', 'Response', 'Plan'] },
   { key: 'girp', label: 'GIRP', sections: ['Goal', 'Intervention', 'Response', 'Plan'] },
   {
-    key: 'upheal',
-    label: 'Upheal',
-    sections: ['Session Focus', 'Client Presentation', 'Interventions', 'Progress', 'Plan'],
-  },
-  {
     key: 'mse_intake',
     label: 'Mental Status Exam',
     sections: [
