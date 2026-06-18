@@ -4,10 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import GoogleCalendar from '@/components/GoogleCalendar'
 import WriteDictateModal from '@/components/WriteDictateModal'
+import UploadAudioModal from '@/components/UploadAudioModal'
 
 export default function DashboardPage() {
   const router = useRouter()
   const [modalOpen, setModalOpen] = useState(false)
+  const [uploadOpen, setUploadOpen] = useState(false)
 
   const handleWriteDictate = () => setModalOpen(true)
 
@@ -17,8 +19,15 @@ export default function DashboardPage() {
     router.push(qs ? `/sessions/new?${qs}` : '/sessions/new')
   }
 
-  const handleUpload = () => {
-    // Stub: wire up later
+  const handleUpload = () => setUploadOpen(true)
+
+  const handleUploadContinue = (params: URLSearchParams, transcript: string) => {
+    setUploadOpen(false)
+    try {
+      sessionStorage.setItem('pendingTranscript', transcript)
+    } catch {}
+    const qs = params.toString()
+    router.push(qs ? `/sessions/new?${qs}` : '/sessions/new')
   }
 
   return (
@@ -62,6 +71,12 @@ export default function DashboardPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onContinue={handleContinue}
+      />
+
+      <UploadAudioModal
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onContinue={handleUploadContinue}
       />
     </div>
   )

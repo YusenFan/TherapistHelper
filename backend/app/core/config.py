@@ -28,9 +28,13 @@ class Settings(BaseSettings):
     TINFOIL_BASE_URL: str = os.getenv("TINFOIL_BASE_URL", "https://inference.tinfoil.sh/v1")
     TINFOIL_MODEL: str = os.getenv("TINFOIL_MODEL", "llama3-3-70b")
 
-    # Deepgram (multilingual speech-to-text)
-    DEEPGRAM_API_KEY: str = os.getenv("DEEPGRAM_API_KEY", "")
-    DEEPGRAM_MODEL: str = os.getenv("DEEPGRAM_MODEL", "nova-3")
+    # OpenAI (speech-to-text; supports mixed-language auto-detect)
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_TRANSCRIBE_MODEL: str = os.getenv("OPENAI_TRANSCRIBE_MODEL", "gpt-4o-transcribe")
+    OPENAI_TRANSCRIBE_DIARIZE_MODEL: str = os.getenv(
+        "OPENAI_TRANSCRIBE_DIARIZE_MODEL", "gpt-4o-transcribe-diarize"
+    )
+    OPENAI_REALTIME_MODEL: str = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-whisper")
 
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")

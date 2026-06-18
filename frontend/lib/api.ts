@@ -198,11 +198,17 @@ class ApiClient {
   }
 
   // ---- AI ----
-  async transcribeAudio(audio: Blob, language?: string): Promise<{ transcript: string; language?: string }> {
+  async transcribeAudio(
+    audio: Blob,
+    language?: string,
+    options?: { diarize?: boolean; filename?: string },
+  ): Promise<{ transcript: string; language?: string }> {
     const form = new FormData()
     const ext = (audio.type.split('/')[1] || 'webm').split(';')[0]
-    form.append('audio', audio, `recording.${ext}`)
+    const filename = options?.filename || `recording.${ext}`
+    form.append('audio', audio, filename)
     if (language) form.append('language', language)
+    if (options?.diarize) form.append('diarize', 'true')
 
     const url = `${this.baseUrl}/api/v1/ai/transcribe`
     let token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -221,6 +227,10 @@ class ApiClient {
     }
     if (!res.ok) throw new Error(await res.text())
     return res.json()
+  }
+
+  getRealtimeClientSecret(): Promise<{ value: string; expires_at?: number }> {
+    return this.request('/api/v1/ai/realtime/client-secret')
   }
 
   generateNote(data: {

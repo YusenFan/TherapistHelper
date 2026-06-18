@@ -20,6 +20,17 @@ function NewSessionInner() {
   const [client, setClient] = useState<Client | null>(null)
   const [savedSession, setSavedSession] = useState<Session | null>(null)
   const [defaultEhr, setDefaultEhr] = useState<string | null>(null)
+  const [initialSummary] = useState<string | undefined>(() => {
+    if (typeof window === 'undefined') return undefined
+    try {
+      const pending = sessionStorage.getItem('pendingTranscript')
+      if (pending) {
+        sessionStorage.removeItem('pendingTranscript')
+        return pending
+      }
+    } catch {}
+    return undefined
+  })
 
   useEffect(() => {
     if (!clientId) return
@@ -63,6 +74,7 @@ function NewSessionInner() {
           initialDate={date}
           initialTime={time}
           initialDuration={duration}
+          initialSummary={initialSummary}
           onSaved={handleSaved}
         />
       </main>

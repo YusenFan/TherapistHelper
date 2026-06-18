@@ -11,12 +11,13 @@ interface Props {
   initialDate?: string
   initialTime?: string
   initialDuration?: number
+  initialSummary?: string
   onSaved: (session: Session) => void
   onDelete?: () => void
 }
 
 const LANGUAGES: { value: string; label: string }[] = [
-  { value: 'multi', label: 'Auto-detect' },
+  { value: 'multi', label: 'Auto-detect (mixed OK)' },
   { value: 'en', label: 'English' },
   { value: 'es', label: 'Spanish' },
   { value: 'fr', label: 'French' },
@@ -54,6 +55,7 @@ export default function SessionEditor({
   initialDate,
   initialTime,
   initialDuration,
+  initialSummary,
   onSaved,
   onDelete,
 }: Props) {
@@ -64,7 +66,7 @@ export default function SessionEditor({
   const [date, setDate] = useState(initialDate ?? (initial?.session_date ?? new Date().toISOString()).slice(0, 10))
   const [time, setTime] = useState(initialTime ?? new Date().toTimeString().slice(0, 5))
   const [duration, setDuration] = useState<number>(initialDuration ?? 50)
-  const [summary, setSummary] = useState(initial?.summary ?? '')
+  const [summary, setSummary] = useState(initial?.summary ?? initialSummary ?? '')
   const [content, setContent] = useState<Record<string, string>>(initial?.note_content ?? {})
   const [sections, setSections] = useState<string[]>(
     initial?.note_content ? Object.keys(initial.note_content) : []
@@ -79,9 +81,12 @@ export default function SessionEditor({
 
   const [language, setLanguage] = useState('multi')
   const [recording, setRecording] = useState(false)
-  const [transcribing, setTranscribing] = useState(false)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
+  const [connecting, setConnecting] = useState(false)
+  const [interim, setInterim] = useState('')
+  const pcRef = useRef<RTCPeerConnection | null>(null)
+  const dcRef = useRef<RTCDataChannel | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const commitTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     apiClient.getClients().then(setClients).catch(() => {})
@@ -112,40 +117,129 @@ export default function SessionEditor({
 
   const client = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId])
 
+  const cleanupStream = () => {
+    if (commitTimerRef.current) {
+      clearInterval(commitTimerRef.current)
+      commitTimerRef.current = null
+    }
+    try { dcRef.current?.close() } catch {}
+    dcRef.current = null
+    try { pcRef.current?.getSenders().forEach(s => s.track?.stop()) } catch {}
+    try { pcRef.current?.close() } catch {}
+    pcRef.current = null
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = null
+    setInterim('')
+  }
+
+  useEffect(() => () => cleanupStream(), [])
+
   const startRecording = async () => {
     setError(null)
+    setInterim('')
+    setConnecting(true)
     try {
+      const { value: ephemeralKey } = await apiClient.getRealtimeClientSecret()
+      if (!ephemeralKey) throw new Error('Could not mint realtime token')
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mr = new MediaRecorder(stream)
-      chunksRef.current = []
-      mr.ondataavailable = e => { if (e.data.size) chunksRef.current.push(e.data) }
-      mr.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
-        const blob = new Blob(chunksRef.current, { type: mr.mimeType || 'audio/webm' })
-        if (blob.size === 0) return
-        setTranscribing(true)
-        try {
-          const { transcript } = await apiClient.transcribeAudio(blob, language)
-          if (transcript) {
-            setSummary(prev => prev ? `${prev.trim()}\n${transcript}` : transcript)
+      streamRef.current = stream
+
+      const pc = new RTCPeerConnection()
+      pcRef.current = pc
+      for (const track of stream.getAudioTracks()) {
+        pc.addTrack(track, stream)
+      }
+
+      const dc = pc.createDataChannel('oai-events')
+      dcRef.current = dc
+
+      let partial = ''
+      dc.onopen = () => {
+        // Override language only when the user picked something specific.
+        // 'multi' / Auto-detect → omit language so the model handles mixed
+        // Chinese + English audio without forcing a single language.
+        if (language && language !== 'multi') {
+          try {
+            dc.send(JSON.stringify({
+              type: 'session.update',
+              session: {
+                type: 'transcription',
+                audio: {
+                  input: {
+                    transcription: { language },
+                  },
+                },
+              },
+            }))
+          } catch {}
+        }
+        // gpt-realtime-whisper has no server VAD — commit the input buffer on
+        // a timer so transcription items finalize and the next chunk starts.
+        commitTimerRef.current = setInterval(() => {
+          if (dc.readyState === 'open') {
+            try { dc.send(JSON.stringify({ type: 'input_audio_buffer.commit' })) } catch {}
           }
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Transcription failed')
-        } finally {
-          setTranscribing(false)
+        }, 7000)
+      }
+      dc.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(typeof e.data === 'string' ? e.data : '')
+          if (msg.type === 'conversation.item.input_audio_transcription.delta') {
+            const delta: string = msg.delta || ''
+            if (!delta) return
+            partial += delta
+            setInterim(partial)
+          } else if (msg.type === 'conversation.item.input_audio_transcription.completed') {
+            const text: string = msg.transcript || partial
+            partial = ''
+            setInterim('')
+            if (text) setSummary(prev => prev ? `${prev.trim()} ${text}`.trim() : text)
+          } else if (msg.type === 'error') {
+            setError(msg.error?.message || 'Live transcription error')
+          }
+        } catch {}
+      }
+
+      pc.onconnectionstatechange = () => {
+        const s = pc.connectionState
+        if (s === 'connected') {
+          setConnecting(false)
+          setRecording(true)
+        } else if (s === 'failed' || s === 'disconnected' || s === 'closed') {
+          setRecording(false)
+          setConnecting(false)
         }
       }
-      mediaRecorderRef.current = mr
-      mr.start()
-      setRecording(true)
+
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+
+      const sdpResponse = await fetch('https://api.openai.com/v1/realtime/calls', {
+        method: 'POST',
+        body: offer.sdp,
+        headers: {
+          Authorization: `Bearer ${ephemeralKey}`,
+          'Content-Type': 'application/sdp',
+        },
+      })
+      if (!sdpResponse.ok) {
+        const detail = await sdpResponse.text()
+        throw new Error(`OpenAI Realtime SDP error: ${detail}`)
+      }
+      const answerSdp = await sdpResponse.text()
+      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Microphone access denied')
+      setConnecting(false)
+      setError(e instanceof Error ? e.message : 'Could not start live dictation')
+      cleanupStream()
     }
   }
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop()
+    cleanupStream()
     setRecording(false)
+    setConnecting(false)
   }
 
   const handleGenerate = async () => {
@@ -305,6 +399,11 @@ export default function SessionEditor({
                 onChange={e => setSummary(e.target.value)}
                 placeholder={'Remember to include:\n\n• Presented issues and topics\n• Client presentations\n• Therapeutic interventions\n• Assessment and plan\n• Overall therapy progress'}
               />
+              {interim && (
+                <div className="px-4 py-2 text-sm text-gray-400 italic border-t border-gray-100 bg-gray-50/50">
+                  {interim}…
+                </div>
+              )}
               <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 bg-gray-50">
                 <span className={`text-xs px-2 py-1 rounded-full ${wordCount === 0 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
                   {wordCount} words
@@ -313,7 +412,7 @@ export default function SessionEditor({
                   <select
                     value={language}
                     onChange={e => setLanguage(e.target.value)}
-                    disabled={recording || transcribing}
+                    disabled={recording || connecting}
                     className="text-xs px-2 py-1 border border-gray-200 rounded-md bg-white"
                   >
                     {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
@@ -322,21 +421,22 @@ export default function SessionEditor({
                     <button
                       type="button"
                       onClick={startRecording}
-                      disabled={transcribing}
+                      disabled={connecting}
                       className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-white text-therapy-navy disabled:opacity-50"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
-                      {transcribing ? 'Transcribing…' : 'Dictate'}
+                      {connecting ? 'Connecting…' : 'Dictate'}
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={stopRecording}
-                      className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 animate-pulse"
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700"
                     >
-                      ■ Stop
+                      <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                      Stop
                     </button>
                   )}
                 </div>

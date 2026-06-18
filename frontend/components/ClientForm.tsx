@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { type ClientInput, type Client } from '@/lib/api'
-import { CLIENT_TYPES, DSM5_DIAGNOSES } from '@/lib/noteFormats'
+import { CLIENT_TYPES } from '@/lib/noteFormats'
 
 interface Props {
   initial?: Client
@@ -17,14 +17,8 @@ export default function ClientForm({ initial, submitting, submitLabel = 'Save', 
   const [pronouns, setPronouns] = useState(initial?.pronouns ?? '')
   const [dob, setDob] = useState(initial?.date_of_birth ?? '')
   const [clientType, setClientType] = useState(initial?.client_type ?? 'individual')
-  const [primary, setPrimary] = useState(initial?.primary_diagnosis ?? '')
-  const [others, setOthers] = useState<string[]>(initial?.other_diagnoses ?? [])
   const [highRisk, setHighRisk] = useState<boolean>(initial?.high_risk ?? false)
   const [extra, setExtra] = useState(initial?.extra_info ?? '')
-
-  const toggleOther = (d: string) => {
-    setOthers(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])
-  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,8 +27,6 @@ export default function ClientForm({ initial, submitting, submitLabel = 'Save', 
       pronouns: pronouns.trim() || undefined,
       date_of_birth: dob || undefined,
       client_type: clientType,
-      primary_diagnosis: primary || undefined,
-      other_diagnoses: others,
       high_risk: highRisk,
       extra_info: extra.trim() || undefined,
     })
@@ -66,27 +58,6 @@ export default function ClientForm({ initial, submitting, submitLabel = 'Save', 
         <select className={input} value={clientType} onChange={e => setClientType(e.target.value)}>
           {CLIENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
-      </div>
-
-      <div>
-        <label className={label}>Primary diagnosis</label>
-        <select className={input} value={primary} onChange={e => setPrimary(e.target.value)}>
-          <option value="">— Select —</option>
-          {DSM5_DIAGNOSES.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
-      </div>
-
-      <div>
-        <label className={label}>Other diagnoses & comorbidities</label>
-        <div className="max-h-44 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1">
-          {DSM5_DIAGNOSES.map(d => (
-            <label key={d} className="flex items-start gap-2 text-sm text-gray-700 px-1 py-0.5 cursor-pointer hover:bg-gray-50 rounded">
-              <input type="checkbox" className="mt-1" checked={others.includes(d)} onChange={() => toggleOther(d)} />
-              <span>{d}</span>
-            </label>
-          ))}
-        </div>
-        {others.length > 0 && <p className="text-xs text-gray-500 mt-1">{others.length} selected</p>}
       </div>
 
       <label className="flex items-center gap-2 text-sm font-medium text-therapy-navy">
